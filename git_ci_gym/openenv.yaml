@@ -1,0 +1,34 @@
+name: git_ci_gym
+display_name: "Git-CI-Gym"
+version: "0.1.0"
+description: >
+  The first autonomous RL environment for semantic code merging and automated CI repair.
+  An AI agent is dropped into a git repository with active merge conflicts and must resolve
+  them while fixing resulting test failures.
+author: "Ajeet Maurya"
+license: "MIT"
+
+environment:
+  server:
+    module: server.app
+    app: app
+    port: 7860
+  client:
+    module: git_ci_gym.client
+    class: GitCIEnv
+
+tasks:
+  easy:
+    description: "Text-only conflict. Pick the correct incoming change."
+  medium:
+    description: "Function renamed on one branch. Fix reference and resolve conflict."
+  hard:
+    description: "Two features conflict logically. Refactor to support both."
+
+tags:
+  - git
+  - ci-cd
+  - testing
+  - code-repair
+  - reinforcement-learning
+  - merge-conflict

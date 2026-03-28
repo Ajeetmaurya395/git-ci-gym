@@ -1,0 +1,26 @@
+[project]
+name = "git-ci-gym"
+version = "0.1.0"
+description = "RL environment for semantic code merging and automated CI repair"
+requires-python = ">=3.10"
+dependencies = [
+    "openenv-core",
+    "fastapi",
+    "uvicorn",
+    "pydantic>=2.0",
+    "fastmcp",
+    "pytest",
+    "openai",
+]
+
+[project.optional-dependencies]
+dev = [
+    "python-dotenv",
+]
+
+[tool.setuptools.packages.find]
+include = ["git_ci_gym*", "server*"]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
