@@ -1,0 +1,45 @@
+# --- Local and Virtual Files ---
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Git and Version Control ---
+.git/
+.gitignore
+
+# --- IDE and Environment ---
+.vscode/
+.idea/
+.env
+.dockerignore
+.pytest_cache/
+
+# --- Project Specific ---
+outputs/
+*.log
+dashboard_preview.png
+implementation_plan.md
+task.md
+walkthrough.md

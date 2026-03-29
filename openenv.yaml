@@ -1,0 +1,34 @@
+name: git_ci_gym
+display_name: "Git-CI-Gym"
+version: "0.2.0"
+description: >
+  Typed OpenEnv environment for repo repair loops. Agents ingest a failing repository
+  snapshot, inspect files, fix merge conflicts or broken CI, and get deterministic
+  grader feedback from 0.0 to 1.0 over the full trajectory.
+author: "Ajeet Maurya"
+license: "MIT"
+
+environment:
+  server:
+    module: server.app
+    app: app
+    port: 7860
+  client:
+    module: git_ci_gym.client
+    class: GitCIEnv
+
+tasks:
+  easy:
+    description: "Resolve a text-only merge conflict and restore the expected greeting behavior."
+  medium:
+    description: "Repair a function rename mismatch and preserve new logging while making tests pass."
+  hard:
+    description: "Merge competing semantic features into one correct implementation that passes CI."
+
+tags:
+  - git
+  - repo-repair
+  - ci
+  - merge-conflict
+  - evaluation
+  - reinforcement-learning

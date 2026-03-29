@@ -144,3 +144,17 @@ cython_debug/
 # OS-specific
 .DS_Store
 Thumbs.db
+
+# Output
+outputs/
+*.log
+
+# pytest
+.pytest_cache/
+
+# python / python packaging
+.eggs/
+*.egg-info/
+*.egg
+build/
+dist/
