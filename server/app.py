@@ -12,6 +12,9 @@ from threading import Lock
 from typing import Any
 from uuid import uuid4
 
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 from pydantic import BaseModel, Field
 from pydantic import ValidationError
 
@@ -294,7 +297,8 @@ def auth_github_login(session_id: str) -> RedirectResponse:
 
 
 @app.get("/auth/github/callback")
-def auth_github_callback(code: str, state: str) -> HTMLResponse:
+@app.get("/auth/callback")
+def auth_github_callback(code: str, state: str):
     """Callback for GitHub OAuth. Exchanges code for token."""
     import requests as req
     session_id = state
@@ -324,19 +328,8 @@ def auth_github_callback(code: str, state: str) -> HTMLResponse:
     except Exception:
         pass
 
-    # Render a success page that automatically closes itself
-    html = """
-    <html><body>
-    <h2>Authentication Successful</h2>
-    <p>You can close this window and return to Git-CI-Gym.</p>
-    <script>
-        // Update local storage to trigger parent window listeners if needed
-        localStorage.setItem("github_oauth_success", Date.now().toString());
-        setTimeout(() => { window.close(); }, 1500);
-    </script>
-    </body></html>
-    """
-    return HTMLResponse(html)
+    # Redirect back to the main dashboard so the user isn't stranded
+    return RedirectResponse("/")
 
 
 @app.get("/ui/auth-status")

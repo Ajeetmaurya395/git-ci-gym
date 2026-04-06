@@ -982,25 +982,11 @@ function closeGitHubModal() {
 
 function loginWithGitHub() {
   if (!currentSessionId) {
-    appendLog('[Error] Start a session first to link your login.', true);
+    alert("Please enter a Repository URL and click 'Start Session' before logging in.");
     return;
   }
   const url = `/auth/github/login?session_id=${currentSessionId}`;
-  const width = 600;
-  const height = 700;
-  const left = window.screen.width / 2 - width / 2;
-  const top = window.screen.height / 2 - height / 2;
-  window.open(url, 'githubAuth', `width=${width},height=${height},top=${top},left=${left}`);
-  
-  // Listen for the child window completing the auth
-  const verifyInterval = setInterval(async () => {
-    if (localStorage.getItem("github_oauth_success")) {
-      clearInterval(verifyInterval);
-      localStorage.removeItem("github_oauth_success");
-      await checkAuthStatus();
-      closeGitHubModal();
-    }
-  }, 1000);
+  window.location.href = url;
 }
 
 async function checkAuthStatus() {
