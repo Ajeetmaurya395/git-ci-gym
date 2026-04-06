@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Git-CI-Gym | Developer Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+  body { font-family: 'Inter', sans-serif; background-color: #10141a; }
+  .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(16px); }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  .code-syntax { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #3c4a42; border-radius: 10px; }
+  @keyframes pulse-glow { 0%,100%{box-shadow:0 0 8px rgba(78,222,163,0.2)} 50%{box-shadow:0 0 20px rgba(78,222,163,0.5)} }
+  .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+  @keyframes spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  .spin-slow { animation: spin-slow 1.5s linear infinite; }
+  .fade-in { animation: fadeIn 0.3s ease-in; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+</style>
+<script>
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "surface-tint":"#4edea3","secondary":"#c0c1ff","outline-variant":"#3c4a42",
+          "tertiary":"#ffb95f","surface-dim":"#10141a","surface-container-highest":"#31353c",
+          "on-error":"#690005","error-container":"#93000a","on-surface-variant":"#bbcabf",
+          "primary-container":"#10b981","surface-bright":"#353940","surface-container-high":"#262a31",
+          "secondary-container":"#3131c0","surface-container-low":"#181c22",
+          "error":"#ffb4ab","on-background":"#dfe2eb","surface-container-lowest":"#0a0e14",
+          "primary":"#4edea3","surface-container":"#1c2026","surface-variant":"#31353c",
+          "outline":"#86948a","on-primary-container":"#00422b","primary-fixed-dim":"#4edea3",
+          "on-error-container":"#ffdad6","primary-fixed":"#6ffbbe","background":"#10141a",
+          "on-primary":"#003824","on-secondary":"#1000a9","surface":"#10141a","on-surface":"#dfe2eb",
+          "tertiary-container":"#e29100"
+        },
+        fontFamily: { headline:["Inter"], body:["Inter"], label:["Inter"] }
+      }
+    }
+  }
+</script>
+</head>
+<body class="text-on-surface antialiased bg-surface overflow-hidden h-screen flex">
+
+<!-- LEFT SIDEBAR -->
+<aside class="fixed left-0 top-0 h-full w-[280px] bg-slate-900/40 backdrop-blur-xl flex flex-col p-6 space-y-6 shadow-2xl shadow-emerald-900/20 z-50">
+  <div class="flex flex-col space-y-1">
+    <div class="flex items-center space-x-3">
+      <span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings:'FILL' 1;">account_tree</span>
+      <h1 class="text-2xl font-bold tracking-tighter text-emerald-400">Git-CI-Gym</h1>
+    </div>
+    <p class="text-slate-400 text-xs font-medium uppercase tracking-widest">Repo Repair Environment</p>
+  </div>
+
+  <!-- Source Selection -->
+  <div class="flex flex-col space-y-4">
+    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Source Input</span>
+    <div class="grid grid-cols-3 gap-2" id="sourceButtons">
+      <button onclick="setSource('builtin')" id="srcBuiltin" class="flex flex-col items-center justify-center p-3 rounded-xl border-r-2 border-emerald-400 bg-emerald-500/10 text-emerald-400 transition-all duration-300">
+        <span class="material-symbols-outlined mb-1">extension</span><span class="text-[9px] font-bold">TASK</span>
+      </button>
+      <button onclick="setSource('repo_path')" id="srcLocal" class="flex flex-col items-center justify-center p-3 rounded-xl text-slate-400 hover:bg-white/5 transition-all duration-300">
+        <span class="material-symbols-outlined mb-1">folder</span><span class="text-[9px] font-bold">LOCAL</span>
+      </button>
+      <button onclick="setSource('repo_url')" id="srcUrl" class="flex flex-col items-center justify-center p-3 rounded-xl text-slate-400 hover:bg-white/5 transition-all duration-300">
+        <span class="material-symbols-outlined mb-1">link</span><span class="text-[9px] font-bold">GIT URL</span>
+      </button>
+    </div>
+    <div id="difficultyWrap">
+      <div class="flex justify-between items-center px-1">
+        <span class="text-xs text-slate-400">Difficulty</span>
+        <div class="flex space-x-1" id="diffButtons">
+          <button onclick="setDifficulty('easy')" class="diff-btn px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[9px] font-bold border border-primary/30" data-diff="easy">Easy</button>
+          <button onclick="setDifficulty('medium')" class="diff-btn px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary/50 text-[9px] font-bold" data-diff="medium">Med</button>
+          <button onclick="setDifficulty('hard')" class="diff-btn px-2 py-0.5 rounded-full bg-error/10 text-error/50 text-[9px] font-bold" data-diff="hard">Hard</button>
+        </div>
+      </div>
+    </div>
+    <div id="sourceRefWrap" class="hidden">
+      <input id="sourceRef" class="w-full bg-slate-950/50 border-none rounded-lg py-2 px-3 text-sm text-slate-300 placeholder-slate-600 focus:ring-1 focus:ring-emerald-500/50 transition-all" placeholder="https://github.com/org/repo or /path/to/repo" type="text"/>
+    </div>
+    <button onclick="startSession()" id="startBtn" class="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 py-3 rounded-xl text-on-primary-container font-bold text-sm shadow-lg shadow-emerald-900/40 transition-all active:scale-[0.98]">
+      Start Session
+    </button>
+    <button onclick="closeSession()" class="w-full py-2 rounded-xl text-slate-400 text-xs font-bold hover:text-error hover:bg-error/5 transition-all">
+      Close Session
+    </button>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="mt-auto space-y-4">
+    <div class="pt-4 border-t border-slate-800/50">
+      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3 block">Quick Actions</span>
+      <div class="grid grid-cols-4 gap-2">
+        <button onclick="quickAction('list_files')" class="p-2 rounded-lg bg-slate-800/50 text-slate-400 hover:text-emerald-400 transition-colors" title="List Files"><span class="material-symbols-outlined text-lg">format_list_bulleted</span></button>
+        <button onclick="quickAction('get_status')" class="p-2 rounded-lg bg-slate-800/50 text-slate-400 hover:text-emerald-400 transition-colors" title="Status"><span class="material-symbols-outlined text-lg">info</span></button>
+        <button onclick="quickAction('run_command', 'pytest -q --tb=short')" class="p-2 rounded-lg bg-slate-800/50 text-slate-400 hover:text-emerald-400 transition-colors" title="Run Tests"><span class="material-symbols-outlined text-lg">play_arrow</span></button>
+        <button onclick="quickAction('submit')" class="p-2 rounded-lg bg-slate-800/50 text-slate-400 hover:text-emerald-400 transition-colors" title="Submit"><span class="material-symbols-outlined text-lg">publish</span></button>
+      </div>
+    </div>
+
+    <!-- GitHub Auth -->
+    <div class="pt-3 border-t border-slate-800/50">
+      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-2 block">GitHub</span>
+      <button onclick="openGitHubModal()" id="githubAuthBtn" class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-800/30 text-slate-400 hover:bg-white/5 transition-all text-xs">
+        <div class="flex items-center space-x-2">
+          <span class="material-symbols-outlined text-sm">lock</span>
+          <span id="githubAuthText">Set Token</span>
+        </div>
+        <span id="githubAuthDot" class="w-2 h-2 rounded-full bg-slate-600"></span>
+      </button>
+      <button onclick="pushFix()" id="pushFixBtn" class="w-full mt-2 flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl bg-secondary/10 text-secondary/40 text-xs font-bold border border-secondary/10 cursor-not-allowed transition-all" disabled>
+        <span class="material-symbols-outlined text-sm">rocket_launch</span>
+        <span>Push Fix to GitHub</span>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- GitHub Token Modal -->
+<div id="githubModal" class="fixed inset-0 z-[100] hidden">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeGitHubModal()"></div>
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] glass rounded-3xl p-8 space-y-6 shadow-2xl shadow-black/40">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="h-10 w-10 rounded-xl bg-secondary/10 flex items-center justify-center">
+          <span class="material-symbols-outlined text-secondary">key</span>
+        </div>
+        <div>
+          <h3 class="font-bold text-slate-100">GitHub Settings</h3>
+          <p class="text-[10px] text-slate-500">Token is stored in memory only — never saved to disk</p>
+        </div>
+      </div>
+      <button onclick="closeGitHubModal()" class="text-slate-500 hover:text-slate-300 transition-colors">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <button onclick="loginWithGitHub()" class="w-full flex items-center justify-center space-x-3 bg-[#2ea44f] hover:bg-[#2c974b] text-white py-3 pr-4 pl-3 rounded-xl font-bold transition-all shadow-md active:scale-[0.98]">
+      <svg height="24" aria-hidden="true" viewBox="0 0 16 16" version="1.1" width="24" data-view-component="true" class="fill-current">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+      </svg>
+      <span>Login with GitHub</span>
+    </button>
+
+    <div class="flex items-center text-slate-600 text-[10px] uppercase font-bold tracking-widest my-2">
+      <div class="flex-1 border-t border-slate-800"></div>
+      <span class="px-3">or use token</span>
+      <div class="flex-1 border-t border-slate-800"></div>
+    </div>
+    
+    <div class="space-y-3">
+      <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Personal Access Token</label>
+      <input id="tokenInput" type="password" placeholder="ghp_xxxxxxxxxxxx" class="w-full bg-slate-950/50 border-none rounded-lg py-3 px-4 text-sm text-slate-300 placeholder-slate-600 focus:ring-1 focus:ring-secondary/50 font-mono transition-all"/>
+      <p class="text-[9px] text-slate-600">Requires <code class="text-secondary/60">repo</code> scope for push access. Generate at <a href="https://github.com/settings/tokens" target="_blank" class="text-secondary/80 hover:text-secondary">github.com/settings/tokens</a></p>
+    </div>
+    <div id="tokenStatus" class="hidden p-3 rounded-xl text-xs"></div>
+    <div class="flex space-x-3">
+      <button onclick="validateToken()" id="validateBtn" class="flex-1 bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 py-3 rounded-xl text-white font-bold text-sm transition-all active:scale-[0.98]">
+        Validate & Save
+      </button>
+      <button onclick="clearToken()" class="px-4 py-3 rounded-xl text-slate-400 text-xs font-bold hover:text-error hover:bg-error/5 transition-all border border-slate-800">
+        Clear
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<main class="ml-[280px] flex-1 flex flex-col h-full bg-surface overflow-y-auto">
+  <!-- TOP BAR: Stage Pipeline -->
+  <header class="h-16 bg-slate-950/50 backdrop-blur-md flex justify-between items-center px-12 z-40 sticky top-0">
+    <div class="flex items-center space-x-6" id="stagePipeline">
+      <div class="flex items-center text-slate-500 space-x-2" data-stage="intake">
+        <span class="material-symbols-outlined text-sm stage-icon">circle</span>
+        <span class="font-inter tracking-wide uppercase text-[10px] font-bold">Intake</span>
+      </div>
+      <div class="h-px w-4 bg-slate-800"></div>
+      <div class="flex items-center text-slate-500 space-x-2" data-stage="analyze">
+        <span class="material-symbols-outlined text-sm stage-icon">circle</span>
+        <span class="font-inter tracking-wide uppercase text-[10px] font-bold">Analyze</span>
+      </div>
+      <div class="h-px w-4 bg-slate-800"></div>
+      <div class="flex items-center text-slate-500 space-x-2" data-stage="repair">
+        <span class="material-symbols-outlined text-sm stage-icon">circle</span>
+        <span class="font-inter tracking-wide uppercase text-[10px] font-bold">Repair</span>
+      </div>
+      <div class="h-px w-4 bg-slate-800"></div>
+      <div class="flex items-center text-slate-500 space-x-2" data-stage="verify">
+        <span class="material-symbols-outlined text-sm stage-icon">circle</span>
+        <span class="font-inter tracking-wide uppercase text-[10px] font-bold">Verify</span>
+      </div>
+      <div class="h-px w-4 bg-slate-800"></div>
+      <div class="flex items-center text-slate-500 space-x-2" data-stage="solved">
+        <span class="material-symbols-outlined text-sm stage-icon">circle</span>
+        <span class="font-inter tracking-wide uppercase text-[10px] font-bold">Solved</span>
+      </div>
+    </div>
+    <div class="flex items-center space-x-4">
+      <span id="sessionBadge" class="text-[10px] text-slate-500 font-mono">No Session</span>
+    </div>
+  </header>
+
+  <div class="p-8 space-y-8 max-w-[1600px]">
+    <!-- STATS ROW -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <!-- Grader Score Ring -->
+      <div class="glass p-6 rounded-2xl flex items-center space-x-6 border-l-4 border-emerald-500">
+        <div class="relative h-16 w-16 flex items-center justify-center">
+          <svg class="w-full h-full -rotate-90" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" fill="transparent" r="28" stroke="#31353c" stroke-width="4"></circle>
+            <circle id="scoreRing" cx="32" cy="32" fill="transparent" r="28" stroke="#10b981" stroke-dasharray="175.93" stroke-dashoffset="175.93" stroke-linecap="round" stroke-width="4" style="transition:stroke-dashoffset 0.8s ease"></circle>
+          </svg>
+          <span id="scorePercent" class="absolute text-emerald-400 font-bold text-sm">0%</span>
+        </div>
+        <div>
+          <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Grader Score</p>
+          <p id="scoreValue" class="text-2xl font-bold text-on-surface">0.00</p>
+        </div>
+      </div>
+      <!-- Merge Status -->
+      <div id="mergeCard" class="glass p-6 rounded-2xl flex items-center space-x-5 border-l-4 border-slate-600">
+        <div class="h-12 w-12 rounded-xl bg-slate-700/30 flex items-center justify-center text-slate-500">
+          <span class="material-symbols-outlined" id="mergeIcon">check_circle</span>
+        </div>
+        <div>
+          <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Merge Status</p>
+          <p id="mergeText" class="text-xl font-bold text-on-surface">No Data</p>
+        </div>
+      </div>
+      <!-- CI Status -->
+      <div id="ciCard" class="glass p-6 rounded-2xl flex items-center space-x-5 border-l-4 border-slate-600">
+        <div class="h-12 w-12 rounded-xl bg-slate-700/30 flex items-center justify-center text-slate-500">
+          <span class="material-symbols-outlined" id="ciIcon">help</span>
+        </div>
+        <div>
+          <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">CI Status</p>
+          <p id="ciText" class="text-xl font-bold text-on-surface">No Data</p>
+        </div>
+      </div>
+      <!-- Steps -->
+      <div class="glass p-6 rounded-2xl flex flex-col justify-center space-y-3 border-l-4 border-primary">
+        <div class="flex justify-between items-center">
+          <p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Steps</p>
+          <span id="stepCount" class="text-primary font-bold text-xs">0 / 18</span>
+        </div>
+        <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+          <div id="stepBar" class="h-full bg-primary transition-all duration-500" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MIDDLE SECTION -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <!-- Conflict Files -->
+      <div class="lg:col-span-4 glass rounded-3xl overflow-hidden flex flex-col">
+        <div class="p-6 border-b border-white/5 flex justify-between items-center">
+          <h3 class="font-bold text-slate-200">Conflict Files</h3>
+          <span id="conflictCount" class="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 font-mono">0 Files</span>
+        </div>
+        <div id="conflictList" class="flex-1 p-2 space-y-2 max-h-[260px] overflow-y-auto">
+          <div class="p-4 text-center text-slate-500 text-sm">Start a session to see conflicts</div>
+        </div>
+      </div>
+
+      <!-- AI Auto-Repair Panel -->
+      <div class="lg:col-span-8 glass rounded-3xl overflow-hidden flex flex-col h-[320px]">
+        <div class="p-6 border-b border-white/5 flex justify-between items-center">
+          <div class="flex items-center space-x-3">
+            <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">smart_toy</span>
+            <h3 class="font-bold text-slate-200">AI Auto-Repair</h3>
+          </div>
+          <button onclick="startAutoRepair()" id="autoRepairBtn" class="flex items-center space-x-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-xs font-bold hover:bg-primary/20 transition-all border border-primary/20 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-sm">auto_fix_high</span>
+            <span>Start Auto-Repair</span>
+          </button>
+        </div>
+        <div class="flex-1 grid grid-cols-2">
+          <div class="p-8 flex flex-col justify-center space-y-4">
+            <p class="text-slate-400 text-sm leading-relaxed">Let AI resolve all conflicts automatically using Gemini-powered code analysis and the Sense→Think→Act agentic loop.</p>
+            <div id="repairStatus" class="hidden">
+              <div class="flex items-center space-x-2 text-primary text-sm">
+                <span class="material-symbols-outlined spin-slow text-sm">sync</span>
+                <span id="repairStatusText">Repairing...</span>
+              </div>
+            </div>
+          </div>
+          <div id="repairLog" class="bg-slate-950/40 p-6 font-mono text-[11px] space-y-2 overflow-y-auto">
+            <div class="text-slate-600 text-center py-8">AI repair steps will appear here</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PR ANALYSIS PANEL (CodeRabbit-style) -->
+    <div id="prIntelPanel" class="hidden space-y-6">
+      <!-- PR Summary Header -->
+      <div class="glass rounded-3xl p-6 border-l-4 border-secondary">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <div class="h-10 w-10 rounded-xl bg-secondary/10 flex items-center justify-center">
+              <span class="material-symbols-outlined text-secondary">code_blocks</span>
+            </div>
+            <div>
+              <h3 class="font-bold text-slate-100 text-lg" id="prTitle">PR Analysis</h3>
+              <p class="text-slate-500 text-xs" id="prMeta"></p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-3">
+            <span id="prLabels" class="flex space-x-1"></span>
+            <a id="prLink" href="#" target="_blank" class="flex items-center space-x-1 px-3 py-1.5 rounded-full bg-white/5 text-slate-400 text-[10px] font-bold hover:text-white transition-colors">
+              <span class="material-symbols-outlined text-xs">open_in_new</span>
+              <span>View on GitHub</span>
+            </a>
+          </div>
+        </div>
+        <p id="prBody" class="mt-3 text-slate-400 text-sm leading-relaxed line-clamp-2"></p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- CI Checks -->
+        <div class="lg:col-span-5 glass rounded-3xl overflow-hidden flex flex-col">
+          <div class="p-6 border-b border-white/5 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+              <span class="material-symbols-outlined text-tertiary" style="font-variation-settings:'FILL' 1;">verified</span>
+              <h3 class="font-bold text-slate-200">CI Checks</h3>
+            </div>
+            <span id="ciChecksCount" class="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 font-mono">0 checks</span>
+          </div>
+          <div id="ciChecksList" class="flex-1 p-2 space-y-1 max-h-[280px] overflow-y-auto">
+            <div class="p-4 text-center text-slate-500 text-sm">Loading CI checks...</div>
+          </div>
+        </div>
+
+        <!-- Changed Files -->
+        <div class="lg:col-span-4 glass rounded-3xl overflow-hidden flex flex-col">
+          <div class="p-6 border-b border-white/5 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+              <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">difference</span>
+              <h3 class="font-bold text-slate-200">Changed Files</h3>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span id="diffAdditions" class="text-[10px] font-mono text-emerald-400">+0</span>
+              <span id="diffDeletions" class="text-[10px] font-mono text-error">-0</span>
+            </div>
+          </div>
+          <div id="changedFilesList" class="flex-1 p-2 space-y-1 max-h-[280px] overflow-y-auto">
+            <div class="p-4 text-center text-slate-500 text-sm">Loading files...</div>
+          </div>
+        </div>
+
+        <!-- Security Scan + Reviews -->
+        <div class="lg:col-span-3 flex flex-col space-y-6">
+          <!-- Security Scan -->
+          <div class="glass rounded-3xl overflow-hidden flex flex-col flex-1">
+            <div class="p-5 border-b border-white/5 flex justify-between items-center">
+              <div class="flex items-center space-x-2">
+                <span class="material-symbols-outlined text-error" style="font-variation-settings:'FILL' 1;">shield</span>
+                <h3 class="font-bold text-slate-200 text-sm">Security Scan</h3>
+              </div>
+              <span id="secTotal" class="px-2 py-0.5 rounded bg-slate-800 text-[9px] text-slate-400 font-mono">0</span>
+            </div>
+            <div id="securityScanBody" class="flex-1 p-4 space-y-2 max-h-[120px] overflow-y-auto">
+              <div class="text-center text-slate-600 text-xs py-2">No issues</div>
+            </div>
+          </div>
+          <!-- Reviews -->
+          <div class="glass rounded-3xl overflow-hidden flex flex-col flex-1">
+            <div class="p-5 border-b border-white/5 flex justify-between items-center">
+              <div class="flex items-center space-x-2">
+                <span class="material-symbols-outlined text-secondary" style="font-variation-settings:'FILL' 1;">rate_review</span>
+                <h3 class="font-bold text-slate-200 text-sm">Reviews</h3>
+              </div>
+              <span id="reviewCount" class="px-2 py-0.5 rounded bg-slate-800 text-[9px] text-slate-400 font-mono">0</span>
+            </div>
+            <div id="reviewsList" class="flex-1 p-4 space-y-2 max-h-[120px] overflow-y-auto">
+              <div class="text-center text-slate-600 text-xs py-2">No reviews</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM SECTION -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <!-- File Viewer -->
+      <div class="lg:col-span-8 bg-surface-container-lowest rounded-3xl overflow-hidden shadow-inner flex flex-col h-[400px]">
+        <div class="px-6 py-4 bg-white/5 flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <span id="viewerFilename" class="text-xs font-mono text-slate-400">No file loaded</span>
+          </div>
+          <div class="flex space-x-2">
+            <span class="w-3 h-3 rounded-full bg-slate-800"></span>
+            <span class="w-3 h-3 rounded-full bg-slate-800"></span>
+            <span class="w-3 h-3 rounded-full bg-slate-800"></span>
+          </div>
+        </div>
+        <div id="fileViewer" class="flex-1 p-6 font-mono text-sm overflow-auto text-slate-300 leading-6">
+          <div class="text-slate-600 text-center py-12">Click a conflict file or run list_files to view content</div>
+        </div>
+      </div>
+
+      <!-- Grading Breakdown -->
+      <div class="lg:col-span-4 glass rounded-3xl p-8 flex flex-col space-y-8">
+        <h3 class="font-bold text-slate-200">Grading Breakdown</h3>
+        <div class="flex-1 flex flex-col justify-center space-y-6">
+          <div class="space-y-2">
+            <div class="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+              <span class="text-primary">Merge Resolution</span>
+              <span id="grMerge" class="text-slate-300">0%</span>
+            </div>
+            <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+              <div id="grMergeBar" class="h-full bg-primary transition-all duration-700" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+              <span class="text-tertiary">CI Progress</span>
+              <span id="grCI" class="text-slate-300">0%</span>
+            </div>
+            <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+              <div id="grCIBar" class="h-full bg-tertiary transition-all duration-700" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+              <span class="text-slate-500">CI Pass Bonus</span>
+              <span id="grBonus" class="text-slate-300">0%</span>
+            </div>
+            <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+              <div id="grBonusBar" class="h-full bg-secondary transition-all duration-700" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-white/5">
+            <div class="flex justify-between items-center">
+              <span class="text-error font-bold text-xs">Penalties</span>
+              <span id="grPenalty" class="text-error font-mono">-0%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TERMINAL LOG -->
+  <footer class="mt-auto border-t border-white/5 bg-slate-950/80 backdrop-blur-xl">
+    <div onclick="toggleTerminal()" class="px-6 py-2 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors">
+      <div class="flex items-center space-x-3">
+        <span class="material-symbols-outlined text-primary text-sm">terminal</span>
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Terminal Log</span>
+      </div>
+      <span id="termToggle" class="material-symbols-outlined text-slate-600">keyboard_arrow_up</span>
+    </div>
+    <div id="terminalBody" class="h-40 px-8 py-4 font-mono text-[12px] text-primary/80 overflow-y-auto leading-relaxed">
+      <p class="text-slate-600">&gt; Waiting for session...</p>
+    </div>
+  </footer>
+</main>
+
+<script>
+// ── State ─────────────────────────────────────────────
+let currentSessionId = localStorage.getItem('git_ci_gym_session_id') || '';
+let currentSource = 'builtin';
+let currentDifficulty = 'easy';
+let terminalOpen = true;
+let githubToken = '';
+let githubUser = '';
+let currentGraderScore = 0;
+const STAGES = ['intake','analyze','repair','verify','solved','failed'];
+
+// ── Source / Difficulty Selection ──────────────────────
+function setSource(kind) {
+  currentSource = kind;
+  document.querySelectorAll('#sourceButtons button').forEach(b => {
+    b.className = 'flex flex-col items-center justify-center p-3 rounded-xl text-slate-400 hover:bg-white/5 transition-all duration-300';
+  });
+  const map = {builtin:'srcBuiltin', repo_path:'srcLocal', repo_url:'srcUrl'};
+  const el = document.getElementById(map[kind]);
+  el.className = 'flex flex-col items-center justify-center p-3 rounded-xl border-r-2 border-emerald-400 bg-emerald-500/10 text-emerald-400 transition-all duration-300';
+  document.getElementById('difficultyWrap').classList.toggle('hidden', kind !== 'builtin');
+  document.getElementById('sourceRefWrap').classList.toggle('hidden', kind === 'builtin');
+}
+
+function setDifficulty(d) {
+  currentDifficulty = d;
+  const colors = {easy:['primary','primary'],medium:['tertiary','tertiary'],hard:['error','error']};
+  document.querySelectorAll('.diff-btn').forEach(b => {
+    const bd = b.dataset.diff;
+    const [c] = colors[bd];
+    if (bd === d) {
+      b.className = `diff-btn px-2 py-0.5 rounded-full bg-${c}/20 text-${c} text-[9px] font-bold border border-${c}/30`;
+    } else {
+      b.className = `diff-btn px-2 py-0.5 rounded-full bg-${c}/10 text-${c}/50 text-[9px] font-bold`;
+    }
+  });
+}
+
+// ── API Helpers ────────────────────────────────────────
+async function apiFetch(url, opts) {
+  const r = await fetch(url, {headers:{'Content-Type':'application/json'}, ...opts});
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.detail || JSON.stringify(data));
+  return data;
+}
+
+// ── Session Management ────────────────────────────────
+async function startSession() {
+  const btn = document.getElementById('startBtn');
+  btn.textContent = 'Starting...';
+  btn.disabled = true;
+  try {
+    const payload = {
+      session_id: currentSessionId || null,
+      task: currentDifficulty,
+      source_kind: currentSource,
+      source_ref: document.getElementById('sourceRef')?.value || null,
+    };
+    const result = await apiFetch('/ui/reset', {method:'POST', body:JSON.stringify(payload)});
+    currentSessionId = result.session_id;
+    localStorage.setItem('git_ci_gym_session_id', currentSessionId);
+    applyState(result.observation, result.state);
+    appendLog('> Session started. Stage: ' + result.observation.stage);
+
+    // Auto-fetch PR intelligence for GitHub URL sessions
+    if (currentSource === 'repo_url') {
+      fetchPRIntelligence();
+    } else {
+      document.getElementById('prIntelPanel').classList.add('hidden');
+    }
+  } catch(e) {
+    appendLog('[Error] ' + e.message, true);
+  } finally {
+    btn.textContent = 'Start Session';
+    btn.disabled = false;
+  }
+}
+
+async function closeSession() {
+  if (!currentSessionId) return;
+  await fetch(`/ui/session?session_id=${encodeURIComponent(currentSessionId)}`, {method:'DELETE'});
+  currentSessionId = '';
+  localStorage.removeItem('git_ci_gym_session_id');
+  resetUI();
+  appendLog('> Session closed.');
+}
+
+// ── Quick Actions ─────────────────────────────────────
+async function quickAction(command, shellCmd) {
+  if (!currentSessionId) { appendLog('[Error] Start a session first.', true); return; }
+  const payload = {session_id: currentSessionId, action: {command}};
+  if (shellCmd) payload.action.shell_command = shellCmd;
+  try {
+    const result = await apiFetch('/ui/step', {method:'POST', body:JSON.stringify(payload)});
+    applyState(result.observation, result.state);
+    const preview = (result.observation.last_result || '').slice(0, 500);
+    appendLog(`> ${command}${shellCmd ? ' ' + shellCmd : ''}`);
+    if (preview) appendLog(preview);
+    // Show result in file viewer for read-heavy commands
+    if (['list_files','read_file','get_status','run_command'].includes(command)) {
+      showInViewer(command, result.observation.last_result || '');
+    }
+  } catch(e) {
+    appendLog('[Error] ' + e.message, true);
+  }
+}
+
+// ── Auto-Repair (SSE Streaming) ───────────────────────
+async function startAutoRepair() {
+  if (!currentSessionId) { appendLog('[Error] Start a session first.', true); return; }
+  const btn = document.getElementById('autoRepairBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-outlined text-sm spin-slow">sync</span><span>Repairing...</span>';
+  document.getElementById('repairStatus').classList.remove('hidden');
+  document.getElementById('repairLog').innerHTML = '';
+
+  try {
+    const response = await fetch('/ui/auto-repair', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({session_id: currentSessionId}),
+    });
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, {stream:true});
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const step = JSON.parse(line.slice(6));
+            renderRepairStep(step);
+            updateFromRepairStep(step);
+          } catch(e) {}
+        }
+      }
+    }
+  } catch(e) {
+    appendLog('[Error] Auto-repair failed: ' + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm">auto_fix_high</span><span>Start Auto-Repair</span>';
+    document.getElementById('repairStatus').classList.add('hidden');
+    // Refresh final state
+    try {
+      const st = await fetch(`/ui/state?session_id=${encodeURIComponent(currentSessionId)}`);
+      if (st.ok) { const d = await st.json(); applyState(d.observation, d.state); }
+    } catch(e) {}
+  }
+}
+
+function renderRepairStep(step) {
+  const log = document.getElementById('repairLog');
+  const div = document.createElement('div');
+  div.className = 'flex items-start space-x-2 fade-in';
+  let icon, color;
+  if (step.error) { icon = 'error'; color = 'text-error'; }
+  else if (step.done) { icon = 'check_circle'; color = 'text-primary'; }
+  else if (step.command === 'error' || step.command === 'timeout') { icon = 'warning'; color = 'text-tertiary'; }
+  else { icon = 'check_circle'; color = 'text-primary'; }
+
+  const preview = step.result_preview ? step.result_preview.slice(0, 120).replace(/</g,'&lt;') : '';
+  div.innerHTML = `
+    <span class="material-symbols-outlined text-xs ${color} mt-0.5" style="font-variation-settings:'FILL' 1;">${icon}</span>
+    <div>
+      <span class="${color}">Step ${step.step}: ${step.detail.replace(/</g,'&lt;')}</span>
+      ${preview ? `<div class="text-slate-600 text-[10px] mt-0.5">${preview}</div>` : ''}
+    </div>`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  appendLog(`[AI] Step ${step.step}: ${step.command} → score=${step.grader_score.toFixed(2)}`);
+}
+
+function updateFromRepairStep(step) {
+  updateScoreRing(step.grader_score);
+  updateMergeCard(step.conflict_files, step.merge_resolved);
+  updateCICard(step.failing_tests, step.ci_passing);
+  updateGradingBars(step.grader_breakdown);
+  updateStagePipeline(step.stage);
+  if (step.conflict_files) renderConflictFiles(step.conflict_files);
+}
+
+// ── UI Update Functions ───────────────────────────────
+function applyState(obs, state) {
+  if (!obs) return;
+  document.getElementById('sessionBadge').textContent = currentSessionId ? currentSessionId.slice(0,8) + '...' : 'No Session';
+  updateScoreRing(obs.grader_score || 0);
+  updateMergeCard(obs.conflict_files || [], obs.merge_resolved);
+  updateCICard(obs.failing_tests || [], obs.ci_passing);
+  updateGradingBars(obs.grader_breakdown || {});
+  updateStagePipeline(obs.stage);
+  const sc = state?.step_count || 0;
+  document.getElementById('stepCount').textContent = `${sc} / 18`;
+  document.getElementById('stepBar').style.width = `${Math.min(100, (sc/18)*100)}%`;
+  renderConflictFiles(obs.conflict_files || []);
+}
+
+function updateScoreRing(score) {
+  currentGraderScore = score;
+  const circ = 175.93;
+  const offset = circ - (circ * score);
+  document.getElementById('scoreRing').setAttribute('stroke-dashoffset', offset);
+  document.getElementById('scorePercent').textContent = Math.round(score*100) + '%';
+  document.getElementById('scoreValue').textContent = score.toFixed(2);
+  const ring = document.getElementById('scoreRing');
+  if (score >= 1.0) ring.setAttribute('stroke','#4edea3');
+  else if (score >= 0.5) ring.setAttribute('stroke','#ffb95f');
+  else ring.setAttribute('stroke','#10b981');
+  updatePushButton();
+}
+
+function updateMergeCard(conflicts, resolved) {
+  const card = document.getElementById('mergeCard');
+  const icon = document.getElementById('mergeIcon');
+  const text = document.getElementById('mergeText');
+  if (resolved || conflicts.length === 0) {
+    card.className = card.className.replace(/border-(?:error|slate-600)/,'border-primary');
+    icon.textContent = 'check_circle';
+    icon.parentElement.className = 'h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary';
+    text.textContent = 'Resolved';
+  } else {
+    card.className = card.className.replace(/border-(?:primary|slate-600)/,'border-error');
+    icon.textContent = 'warning';
+    icon.parentElement.className = 'h-12 w-12 rounded-xl bg-error/10 flex items-center justify-center text-error';
+    text.textContent = conflicts.length + ' Conflict' + (conflicts.length > 1 ? 's' : '');
+  }
+}
+
+function updateCICard(failing, passing) {
+  const card = document.getElementById('ciCard');
+  const icon = document.getElementById('ciIcon');
+  const text = document.getElementById('ciText');
+  if (passing) {
+    card.className = card.className.replace(/border-(?:error|slate-600)/,'border-primary');
+    icon.textContent = 'check_circle';
+    icon.parentElement.className = 'h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary';
+    text.textContent = 'All Passing';
+  } else {
+    card.className = card.className.replace(/border-(?:primary|slate-600)/,'border-error');
+    icon.textContent = 'cancel';
+    icon.parentElement.className = 'h-12 w-12 rounded-xl bg-error/10 flex items-center justify-center text-error';
+    text.textContent = failing.length + ' Failing';
+  }
+}
+
+function updateGradingBars(breakdown) {
+  const m = (breakdown.merge_resolution || 0);
+  const c = (breakdown.ci_progress || 0);
+  const b = (breakdown.ci_pass_bonus || 0);
+  const p = (breakdown.failed_command_penalty || 0);
+  document.getElementById('grMerge').textContent = Math.round(m*100) + '%';
+  document.getElementById('grMergeBar').style.width = Math.round(m/0.35*100) + '%';
+  document.getElementById('grCI').textContent = Math.round(c*100) + '%';
+  document.getElementById('grCIBar').style.width = Math.round(c/0.35*100) + '%';
+  document.getElementById('grBonus').textContent = Math.round(b*100) + '%';
+  document.getElementById('grBonusBar').style.width = Math.round(b/0.30*100) + '%';
+  document.getElementById('grPenalty').textContent = Math.round(p*100) + '%';
+}
+
+function updateStagePipeline(stage) {
+  const order = ['intake','analyze','repair','verify','solved'];
+  const stageIdx = order.indexOf(stage);
+  document.querySelectorAll('#stagePipeline [data-stage]').forEach((el, i) => {
+    const icon = el.querySelector('.stage-icon');
+    if (i < stageIdx) {
+      el.className = 'flex items-center text-emerald-400 space-x-2';
+      icon.textContent = 'check_circle';
+      icon.style.fontVariationSettings = "'FILL' 1";
+    } else if (i === stageIdx) {
+      el.className = 'flex items-center text-emerald-400 border-b-2 border-emerald-400 pb-1 space-x-2';
+      icon.textContent = stage === 'solved' ? 'check_circle' : 'radio_button_checked';
+      icon.style.fontVariationSettings = "'FILL' 1";
+    } else {
+      el.className = 'flex items-center text-slate-500 space-x-2';
+      icon.textContent = 'circle';
+      icon.style.fontVariationSettings = "'FILL' 0";
+    }
+  });
+  if (stage === 'failed') {
+    document.querySelectorAll('#stagePipeline [data-stage]').forEach(el => {
+      if (el.dataset.stage !== 'intake' && el.dataset.stage !== 'analyze') {
+        el.className = 'flex items-center text-error space-x-2';
+      }
+    });
+  }
+}
+
+function renderConflictFiles(files) {
+  const list = document.getElementById('conflictList');
+  document.getElementById('conflictCount').textContent = files.length + ' Files';
+  if (files.length === 0) {
+    list.innerHTML = '<div class="p-4 text-center text-slate-500 text-sm">No conflict files detected</div>';
+    return;
+  }
+  list.innerHTML = files.map(f => `
+    <div class="p-4 rounded-2xl bg-white/5 flex items-center justify-between group hover:bg-white/10 transition-colors">
+      <div class="flex items-center space-x-4">
+        <span class="material-symbols-outlined text-error">description</span>
+        <div class="flex flex-col">
+          <span class="text-sm font-medium text-slate-300">${f}</span>
+          <span class="text-[9px] font-bold text-error uppercase tracking-tighter">Conflicted</span>
+        </div>
+      </div>
+      <button onclick="viewFile('${f}')" class="text-[10px] font-bold text-primary uppercase border border-primary/20 px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">View</button>
+    </div>`).join('');
+}
+
+async function viewFile(path) {
+  if (!currentSessionId) return;
+  try {
+    const result = await apiFetch('/ui/step', {
+      method: 'POST',
+      body: JSON.stringify({session_id:currentSessionId, action:{command:'read_file', path}}),
+    });
+    const content = result.observation.last_result || '';
+    showInViewer(path, content);
+    applyState(result.observation, result.state);
+  } catch(e) { appendLog('[Error] ' + e.message, true); }
+}
+
+function showInViewer(title, content) {
+  document.getElementById('viewerFilename').textContent = title;
+  const viewer = document.getElementById('fileViewer');
+  const lines = content.split('\n');
+  viewer.innerHTML = lines.map((line, i) => {
+    const num = i + 1;
+    let bg = '';
+    const escaped = line.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    if (escaped.match(/^&lt;&lt;&lt;&lt;&lt;&lt;&lt;/)) bg = 'bg-error/20';
+    else if (escaped.match(/^=======/)) bg = 'bg-tertiary/20';
+    else if (escaped.match(/^&gt;&gt;&gt;&gt;&gt;&gt;&gt;/)) bg = 'bg-primary/20';
+    return `<div class="flex"><span class="w-8 text-slate-600 select-none text-right mr-4">${num}</span><span class="${bg} flex-1">${escaped || ' '}</span></div>`;
+  }).join('');
+}
+
+// ── Terminal ──────────────────────────────────────────
+function appendLog(text, isError) {
+  const term = document.getElementById('terminalBody');
+  const p = document.createElement('p');
+  p.textContent = text;
+  if (isError) p.className = 'text-error';
+  term.appendChild(p);
+  term.scrollTop = term.scrollHeight;
+}
+
+function toggleTerminal() {
+  const body = document.getElementById('terminalBody');
+  const icon = document.getElementById('termToggle');
+  terminalOpen = !terminalOpen;
+  body.style.display = terminalOpen ? 'block' : 'none';
+  icon.textContent = terminalOpen ? 'keyboard_arrow_down' : 'keyboard_arrow_up';
+}
+
+function resetUI() {
+  document.getElementById('sessionBadge').textContent = 'No Session';
+  updateScoreRing(0);
+  updateStagePipeline('intake');
+  document.getElementById('mergeText').textContent = 'No Data';
+  document.getElementById('ciText').textContent = 'No Data';
+  document.getElementById('stepCount').textContent = '0 / 18';
+  document.getElementById('stepBar').style.width = '0%';
+  document.getElementById('conflictList').innerHTML = '<div class="p-4 text-center text-slate-500 text-sm">Start a session to see conflicts</div>';
+  document.getElementById('conflictCount').textContent = '0 Files';
+  document.getElementById('fileViewer').innerHTML = '<div class="text-slate-600 text-center py-12">Click a conflict file or run list_files to view content</div>';
+  document.getElementById('repairLog').innerHTML = '<div class="text-slate-600 text-center py-8">AI repair steps will appear here</div>';
+  document.getElementById('prIntelPanel').classList.add('hidden');
+}
+
+// ── PR Intelligence (CodeRabbit-style) ────────────────
+async function fetchPRIntelligence() {
+  if (!currentSessionId) return;
+  const panel = document.getElementById('prIntelPanel');
+  try {
+    const r = await fetch(`/ui/pr-intel?session_id=${encodeURIComponent(currentSessionId)}`);
+    if (!r.ok) return;
+    const intel = await r.json();
+    if (!intel.fetched) {
+      panel.classList.add('hidden');
+      return;
+    }
+    renderPRIntelligence(intel);
+    panel.classList.remove('hidden');
+    appendLog(`> PR Intelligence loaded: PR #${intel.pr_number} — ${intel.title}`);
+    appendLog(`  ${intel.total_changed_files} files changed (+${intel.total_additions}/-${intel.total_deletions}), ${intel.failing_checks} failing, ${intel.passing_checks} passing`);
+  } catch(e) {
+    console.warn('PR intel fetch failed:', e);
+    panel.classList.add('hidden');
+  }
+}
+
+function renderPRIntelligence(intel) {
+  // PR Summary
+  document.getElementById('prTitle').textContent = `PR #${intel.pr_number}: ${intel.title}`;
+  document.getElementById('prMeta').textContent =
+    `by ${intel.author} · ${intel.base_branch} ← ${intel.head_branch} · ${intel.total_changed_files} files · +${intel.total_additions}/-${intel.total_deletions}`;
+  document.getElementById('prBody').textContent = (intel.body || '').slice(0, 300);
+  document.getElementById('prLink').href = intel.html_url;
+
+  // Labels
+  const labelsEl = document.getElementById('prLabels');
+  labelsEl.innerHTML = (intel.labels || []).slice(0, 4).map(l =>
+    `<span class="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary text-[9px] font-bold">${l}</span>`
+  ).join('');
+
+  // CI Checks
+  const checks = intel.check_runs || [];
+  document.getElementById('ciChecksCount').textContent = `${checks.length} checks`;
+  const ciList = document.getElementById('ciChecksList');
+  if (checks.length === 0) {
+    ciList.innerHTML = '<div class="p-4 text-center text-slate-500 text-sm">No CI checks found</div>';
+  } else {
+    ciList.innerHTML = checks.map(c => {
+      const isPass = c.conclusion === 'success';
+      const icon = isPass ? 'check_circle' : c.conclusion === 'failure' ? 'cancel' : 'schedule';
+      const color = isPass ? 'text-emerald-400' : c.conclusion === 'failure' ? 'text-error' : 'text-slate-500';
+      const bg = isPass ? '' : c.conclusion === 'failure' ? 'bg-error/5' : '';
+      const summary = c.failure_summary ? `<div class="text-[9px] text-error/70 mt-1 line-clamp-2 font-mono">${c.failure_summary.slice(0, 200).replace(/</g,'&lt;')}</div>` : '';
+      return `
+        <div class="p-3 rounded-xl ${bg} hover:bg-white/5 transition-colors">
+          <div class="flex items-center space-x-3">
+            <span class="material-symbols-outlined text-sm ${color}" style="font-variation-settings:'FILL' 1;">${icon}</span>
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-medium text-slate-300 truncate block">${c.name}</span>
+              ${summary}
+            </div>
+            <span class="text-[9px] font-bold uppercase ${color}">${c.conclusion || c.status}</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // Changed Files
+  const files = intel.changed_files || [];
+  document.getElementById('diffAdditions').textContent = `+${intel.total_additions}`;
+  document.getElementById('diffDeletions').textContent = `-${intel.total_deletions}`;
+  const filesList = document.getElementById('changedFilesList');
+  if (files.length === 0) {
+    filesList.innerHTML = '<div class="p-4 text-center text-slate-500 text-sm">No files changed</div>';
+  } else {
+    filesList.innerHTML = files.slice(0, 50).map(f => {
+      const statusIcon = {added: 'add_circle', removed: 'remove_circle', modified: 'change_circle', renamed: 'swap_horiz'}[f.status] || 'description';
+      const statusColor = {added: 'text-emerald-400', removed: 'text-error', modified: 'text-tertiary', renamed: 'text-secondary'}[f.status] || 'text-slate-400';
+      const name = f.filename.split('/').pop();
+      const dir = f.filename.includes('/') ? f.filename.substring(0, f.filename.lastIndexOf('/')) + '/' : '';
+      return `
+        <div class="px-3 py-2 rounded-lg hover:bg-white/5 transition-colors flex items-center space-x-2 group">
+          <span class="material-symbols-outlined text-xs ${statusColor}" style="font-variation-settings:'FILL' 1;">${statusIcon}</span>
+          <div class="flex-1 min-w-0">
+            <span class="text-slate-500 text-[9px]">${dir}</span><span class="text-slate-300 text-[11px] font-medium">${name}</span>
+          </div>
+          <span class="text-[9px] font-mono"><span class="text-emerald-400">+${f.additions}</span> <span class="text-error">-${f.deletions}</span></span>
+        </div>`;
+    }).join('');
+  }
+
+  // Security Scan
+  const sec = intel.security || {};
+  const totalSec = sec.total_issues || 0;
+  document.getElementById('secTotal').textContent = totalSec;
+  document.getElementById('secTotal').className = totalSec > 0
+    ? 'px-2 py-0.5 rounded bg-error/20 text-[9px] text-error font-mono font-bold'
+    : 'px-2 py-0.5 rounded bg-slate-800 text-[9px] text-slate-400 font-mono';
+  const secBody = document.getElementById('securityScanBody');
+  if (totalSec === 0) {
+    secBody.innerHTML = '<div class="flex items-center space-x-2 text-emerald-400 text-xs py-1"><span class="material-symbols-outlined text-sm" style="font-variation-settings:\'FILL\' 1;">verified</span><span>No issues detected</span></div>';
+  } else {
+    let secHtml = '';
+    (sec.vulnerabilities || []).forEach(v => {
+      secHtml += `<div class="flex items-start space-x-2 text-[10px]"><span class="text-error font-bold mt-px">VULN</span><span class="text-slate-400 flex-1">${v.slice(0,120).replace(/</g,'&lt;')}</span></div>`;
+    });
+    (sec.dependency_issues || []).forEach(d => {
+      secHtml += `<div class="flex items-start space-x-2 text-[10px]"><span class="text-tertiary font-bold mt-px">DEP</span><span class="text-slate-400 flex-1">${d.slice(0,120).replace(/</g,'&lt;')}</span></div>`;
+    });
+    (sec.lint_issues || []).forEach(l => {
+      secHtml += `<div class="flex items-start space-x-2 text-[10px]"><span class="text-secondary font-bold mt-px">LINT</span><span class="text-slate-400 flex-1">${l.slice(0,120).replace(/</g,'&lt;')}</span></div>`;
+    });
+    secBody.innerHTML = secHtml;
+  }
+
+  // Reviews
+  const reviews = intel.reviews || [];
+  document.getElementById('reviewCount').textContent = reviews.length;
+  const reviewsEl = document.getElementById('reviewsList');
+  if (reviews.length === 0) {
+    reviewsEl.innerHTML = '<div class="text-center text-slate-600 text-xs py-2">No reviews yet</div>';
+  } else {
+    reviewsEl.innerHTML = reviews.slice(0, 10).map(r => {
+      const stateColor = {APPROVED:'text-emerald-400',CHANGES_REQUESTED:'text-error',COMMENTED:'text-slate-400'}[r.state] || 'text-slate-400';
+      const icon = r.is_bot ? 'smart_toy' : 'person';
+      return `
+        <div class="flex items-start space-x-2">
+          <span class="material-symbols-outlined text-xs ${stateColor} mt-0.5" style="font-variation-settings:'FILL' 1;">${icon}</span>
+          <div class="flex-1">
+            <span class="text-[10px] font-bold ${stateColor}">${r.author}</span>
+            <span class="text-[9px] text-slate-600 ml-1">${r.state}</span>
+            ${r.body ? `<p class="text-[10px] text-slate-500 mt-0.5 line-clamp-2">${r.body.slice(0,150).replace(/</g,'&lt;')}</p>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+}
+
+// ── GitHub Auth & Push Fix ────────────────────────────
+function openGitHubModal() {
+  document.getElementById('githubModal').classList.remove('hidden');
+  if (githubToken) {
+    document.getElementById('tokenInput').value = githubToken.slice(0, 4) + '****';
+  }
+}
+
+function closeGitHubModal() {
+  document.getElementById('githubModal').classList.add('hidden');
+}
+
+function loginWithGitHub() {
+  if (!currentSessionId) {
+    appendLog('[Error] Start a session first to link your login.', true);
+    return;
+  }
+  const url = `/auth/github/login?session_id=${currentSessionId}`;
+  const width = 600;
+  const height = 700;
+  const left = window.screen.width / 2 - width / 2;
+  const top = window.screen.height / 2 - height / 2;
+  window.open(url, 'githubAuth', `width=${width},height=${height},top=${top},left=${left}`);
+  
+  // Listen for the child window completing the auth
+  const verifyInterval = setInterval(async () => {
+    if (localStorage.getItem("github_oauth_success")) {
+      clearInterval(verifyInterval);
+      localStorage.removeItem("github_oauth_success");
+      await checkAuthStatus();
+      closeGitHubModal();
+    }
+  }, 1000);
+}
+
+async function checkAuthStatus() {
+  if (!currentSessionId) return;
+  try {
+    const res = await apiFetch(`/ui/auth-status?session_id=${currentSessionId}`);
+    if (res.authenticated) {
+      githubToken = true;
+      githubUser = res.username;
+      showTokenStatus(`✓ Authenticated as ${res.username}`, true);
+      updateAuthUI(true, res.username);
+      appendLog(`> GitHub authenticated as ${res.username}`);
+      updatePushButton();
+    }
+  } catch(e) {}
+}
+
+async function validateToken() {
+  if (!currentSessionId) { appendLog('[Error] Start a session first.', true); return; }
+  const token = document.getElementById('tokenInput').value.trim();
+  if (!token || token.includes('****')) {
+    showTokenStatus('Enter a valid token (ghp_xxx or github_pat_xxx)', false);
+    return;
+  }
+
+  const btn = document.getElementById('validateBtn');
+  btn.textContent = 'Validating...';
+  btn.disabled = true;
+
+  try {
+    const result = await apiFetch('/ui/set-token', {
+      method: 'POST',
+      body: JSON.stringify({session_id: currentSessionId, token}),
+    });
+
+    if (result.valid) {
+      githubToken = token;
+      githubUser = result.username;
+      showTokenStatus(`✓ Authenticated as ${result.username}`, true);
+      updateAuthUI(true, result.username);
+      appendLog(`> GitHub authenticated as ${result.username}`);
+      updatePushButton();
+    } else {
+      showTokenStatus(result.error || 'Token validation failed', false);
+    }
+  } catch(e) {
+    showTokenStatus('Error: ' + e.message, false);
+  } finally {
+    btn.textContent = 'Validate & Save';
+    btn.disabled = false;
+  }
+}
+
+function clearToken() {
+  githubToken = '';
+  githubUser = '';
+  document.getElementById('tokenInput').value = '';
+  document.getElementById('tokenStatus').classList.add('hidden');
+  updateAuthUI(false);
+  updatePushButton();
+  appendLog('> GitHub token cleared.');
+}
+
+function showTokenStatus(msg, success) {
+  const el = document.getElementById('tokenStatus');
+  el.classList.remove('hidden');
+  el.className = `p-3 rounded-xl text-xs ${success ? 'bg-emerald-500/10 text-emerald-400' : 'bg-error/10 text-error'}`;
+  el.textContent = msg;
+}
+
+function updateAuthUI(authed, username) {
+  const text = document.getElementById('githubAuthText');
+  const dot = document.getElementById('githubAuthDot');
+  const icon = document.querySelector('#githubAuthBtn .material-symbols-outlined');
+  if (authed) {
+    text.textContent = username;
+    dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+    icon.textContent = 'lock_open';
+  } else {
+    text.textContent = 'Set Token';
+    dot.className = 'w-2 h-2 rounded-full bg-slate-600';
+    icon.textContent = 'lock';
+  }
+}
+
+function updatePushButton() {
+  const btn = document.getElementById('pushFixBtn');
+  const canPush = githubToken && currentGraderScore >= 0.95 && currentSource === 'repo_url';
+  if (canPush) {
+    btn.disabled = false;
+    btn.className = 'w-full mt-2 flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 text-white text-xs font-bold cursor-pointer transition-all active:scale-[0.98] shadow-lg shadow-violet-900/30';
+  } else {
+    btn.disabled = true;
+    btn.className = 'w-full mt-2 flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl bg-secondary/10 text-secondary/40 text-xs font-bold border border-secondary/10 cursor-not-allowed transition-all';
+  }
+}
+
+async function pushFix() {
+  if (!currentSessionId || !githubToken) return;
+  const btn = document.getElementById('pushFixBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-outlined text-sm spin-slow">sync</span><span>Pushing...</span>';
+
+  try {
+    const result = await apiFetch('/ui/push-fix', {
+      method: 'POST',
+      body: JSON.stringify({
+        session_id: currentSessionId,
+        commit_message: 'fix: AI-assisted repair via Git-CI-Gym',
+      }),
+    });
+
+    if (result.pushed) {
+      appendLog(`> ✓ Fix pushed to branch '${result.branch}'`);
+      appendLog(`> Create PR: ${result.pr_url}`);
+      btn.innerHTML = '<span class="material-symbols-outlined text-sm">check_circle</span><span>Pushed!</span>';
+      btn.className = 'w-full mt-2 flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30 cursor-default transition-all';
+      // Open PR creation page
+      window.open(result.pr_url, '_blank');
+    } else {
+      appendLog('[Error] Push failed: ' + result.error, true);
+      btn.innerHTML = '<span class="material-symbols-outlined text-sm">error</span><span>Push Failed</span>';
+      setTimeout(() => {
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">rocket_launch</span><span>Push Fix to GitHub</span>';
+        updatePushButton();
+      }, 3000);
+    }
+  } catch(e) {
+    appendLog('[Error] ' + e.message, true);
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm">rocket_launch</span><span>Push Fix to GitHub</span>';
+    updatePushButton();
+  }
+}
+
+// ── Init ──────────────────────────────────────────────
+(async function init() {
+  if (!currentSessionId) return;
+  try {
+    const r = await fetch(`/ui/state?session_id=${encodeURIComponent(currentSessionId)}`);
+    if (!r.ok) { currentSessionId = ''; localStorage.removeItem('git_ci_gym_session_id'); return; }
+    const d = await r.json();
+    applyState(d.observation, d.state);
+    await checkAuthStatus();
+  } catch(e) { console.error(e); }
+})();
+</script>
+</body></html>

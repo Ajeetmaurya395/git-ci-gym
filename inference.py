@@ -32,13 +32,16 @@ remove merge conflicts, repair broken CI, and stop when the grader score reaches
 Available commands:
 - list_files
 - read_file(path)
-- write_file(path, content)
+- edit_file(path, search_term, replacement)
 - run_command(shell_command)
 - get_status
 - submit
 
 Always respond with valid JSON only, shaped like:
 {"command":"read_file","path":"app/main.py","notes":"optional short rationale"}
+
+When writing or editing files, use the edit_file command to surgically replace snippets:
+{"command":"edit_file","path":"app/main.py","search_term":"def old(): pass","replacement":"def new(): pass"}
 
 When you need shell access, use:
 {"command":"run_command","shell_command":"pytest -q --tb=no"}

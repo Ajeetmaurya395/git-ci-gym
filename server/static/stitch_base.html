@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Git-CI-Gym | Developer Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #10141a; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(16px); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .code-syntax { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+        /* Hide scrollbars but keep functionality */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3c4a42; border-radius: 10px; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-tint": "#4edea3",
+                      "secondary": "#c0c1ff",
+                      "outline-variant": "#3c4a42",
+                      "tertiary": "#ffb95f",
+                      "surface-dim": "#10141a",
+                      "surface-container-highest": "#31353c",
+                      "on-error": "#690005",
+                      "on-tertiary-fixed-variant": "#653e00",
+                      "error-container": "#93000a",
+                      "on-surface-variant": "#bbcabf",
+                      "secondary-fixed": "#e1e0ff",
+                      "tertiary-fixed": "#ffddb8",
+                      "on-secondary-fixed": "#07006c",
+                      "primary-container": "#10b981",
+                      "on-primary-fixed-variant": "#005236",
+                      "on-secondary-fixed-variant": "#2f2ebe",
+                      "surface-bright": "#353940",
+                      "surface-container-high": "#262a31",
+                      "secondary-container": "#3131c0",
+                      "inverse-primary": "#006c49",
+                      "on-secondary-container": "#b0b2ff",
+                      "tertiary-fixed-dim": "#ffb95f",
+                      "inverse-surface": "#dfe2eb",
+                      "surface-container-low": "#181c22",
+                      "error": "#ffb4ab",
+                      "on-background": "#dfe2eb",
+                      "surface-container-lowest": "#0a0e14",
+                      "primary": "#4edea3",
+                      "surface-container": "#1c2026",
+                      "on-tertiary": "#472a00",
+                      "on-tertiary-fixed": "#2a1700",
+                      "on-primary-fixed": "#002113",
+                      "surface-variant": "#31353c",
+                      "outline": "#86948a",
+                      "on-tertiary-container": "#523200",
+                      "tertiary-container": "#e29100",
+                      "on-primary-container": "#00422b",
+                      "primary-fixed-dim": "#4edea3",
+                      "inverse-on-surface": "#2d3137",
+                      "on-error-container": "#ffdad6",
+                      "primary-fixed": "#6ffbbe",
+                      "background": "#10141a",
+                      "on-primary": "#003824",
+                      "on-secondary": "#1000a9",
+                      "surface": "#10141a",
+                      "on-surface": "#dfe2eb",
+                      "secondary-fixed-dim": "#c0c1ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "fontFamily": {
+                      "headline": ["Inter"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          }
+        }
+    </script>
+</head>
+<body class="text-on-surface antialiased bg-surface overflow-hidden h-screen flex">
+<!-- LEFT SIDEBAR: Shared Component SideNavBar Mapping -->
+<aside class="fixed left-0 top-0 h-full w-[280px] bg-slate-900/40 backdrop-blur-xl flex flex-col p-6 space-y-8 shadow-2xl shadow-emerald-900/20 font-inter antialiased z-50">
+<!-- Logo & Branding -->
+<div class="flex flex-col space-y-1">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">account_tree</span>
+<h1 class="text-2xl font-display italic font-bold tracking-tighter text-emerald-400">Git-CI-Gym</h1>
+</div>
+<p class="text-slate-400 text-xs font-medium uppercase tracking-widest">Repo Repair Environment</p>
+</div>
+<!-- Source Input Section -->
+<div class="flex flex-col space-y-4">
+<span class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Source Input</span>
+<div class="grid grid-cols-3 gap-2">
+<!-- Built-in Task (Active) -->
+<button class="flex flex-col items-center justify-center p-3 rounded-xl border-r-2 border-emerald-400 bg-emerald-500/10 text-emerald-400 transition-all duration-300">
+<span class="material-symbols-outlined mb-1">extension</span>
+<span class="text-[9px] font-bold">TASK</span>
+</button>
+<button class="flex flex-col items-center justify-center p-3 rounded-xl text-slate-400 hover:bg-white/5 transition-all duration-300">
+<span class="material-symbols-outlined mb-1">folder</span>
+<span class="text-[9px] font-bold">LOCAL</span>
+</button>
+<button class="flex flex-col items-center justify-center p-3 rounded-xl text-slate-400 hover:bg-white/5 transition-all duration-300">
+<span class="material-symbols-outlined mb-1">link</span>
+<span class="text-[9px] font-bold">GIT URL</span>
+</button>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center px-1">
+<span class="text-xs text-slate-400">Difficulty</span>
+<div class="flex space-x-1">
+<span class="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[9px] font-bold border border-primary/30">Easy</span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary/50 text-[9px] font-bold">Med</span>
+<span class="px-2 py-0.5 rounded-full bg-error/10 text-error/50 text-[9px] font-bold">Hard</span>
+</div>
+</div>
+<div class="relative group">
+<input class="w-full bg-slate-950/50 border-none rounded-lg py-2 px-3 text-sm text-slate-300 placeholder-slate-600 focus:ring-1 focus:ring-emerald-500/50 transition-all" placeholder="https://github.com/org/repo" type="text"/>
+</div>
+</div>
+<button class="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 py-3 rounded-xl text-on-primary-container font-bold text-sm shadow-lg shadow-emerald-900/40 transition-all active:scale-[0.98]">
+                Start Session
+            </button>
+</div>
+<!-- Dashboard Navigation -->
+<nav class="flex flex-col space-y-1">
+<span class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-2">Navigation</span>
+<a class="flex items-center space-x-3 px-4 py-3 text-emerald-400 bg-emerald-500/10 border-r-2 border-emerald-400 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined">source</span>
+<span class="text-sm font-medium">Repositories</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="text-sm font-medium">Build History</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="text-sm font-medium">Analytics</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+<!-- Quick Actions Footer -->
+<div class="mt-auto pt-6 border-t border-slate-800/50 grid grid-cols-4 gap-2">
+<button class="p-2 rounded-lg bg-slate-800/50 text-slate-400 hover:text-emerald-400 transition-colors" title="List Files"><span class="material-symbols-outlined text-lg">format_list_bulleted</span></button>
+<button class="p-2 rounded-lg bg-slate-800/50 text-slate-400 hover:text-emerald-400 transition-colors" title="Status"><span class="material-symbols-outlined text-lg">info</span></button>
+<button class="p-2 rounded-lg bg-slate-800/50 text-slate-400 hover:text-emerald-400 transition-colors" title="Run Tests"><span class="material-symbols-outlined text-lg">play_arrow</span></button>
+<button class="p-2 rounded-lg bg-slate-800/50 text-slate-400 hover:text-emerald-400 transition-colors" title="Submit"><span class="material-symbols-outlined text-lg">publish</span></button>
+</div>
+</aside>
+<!-- MAIN CONTENT AREA -->
+<main class="ml-[280px] flex-1 flex flex-col h-full bg-surface overflow-y-auto">
+<!-- TOP APP BAR: Shared Component Mapping -->
+<header class="h-16 bg-slate-950/50 backdrop-blur-md flex justify-between items-center px-12 z-40 sticky top-0">
+<div class="flex items-center space-x-8">
+<!-- Stepper Progress -->
+<div class="flex items-center space-x-6">
+<div class="flex items-center text-slate-500 space-x-2">
+<span class="material-symbols-outlined text-emerald-400 text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-inter tracking-wide uppercase text-[10px] font-bold">Intake</span>
+</div>
+<div class="h-px w-4 bg-slate-800"></div>
+<div class="flex items-center text-slate-500 space-x-2">
+<span class="material-symbols-outlined text-emerald-400 text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-inter tracking-wide uppercase text-[10px] font-bold">Analyze</span>
+</div>
+<div class="h-px w-4 bg-slate-800"></div>
+<div class="flex items-center text-emerald-400 border-b-2 border-emerald-400 pb-1 space-x-2">
+<span class="font-inter tracking-wide uppercase text-[10px] font-extrabold">Repair</span>
+</div>
+<div class="h-px w-4 bg-slate-800"></div>
+<div class="flex items-center text-slate-500 space-x-2">
+<span class="font-inter tracking-wide uppercase text-[10px] font-bold">Verify</span>
+</div>
+<div class="h-px w-4 bg-slate-800"></div>
+<div class="flex items-center text-slate-500 space-x-2">
+<span class="font-inter tracking-wide uppercase text-[10px] font-bold">Solved</span>
+</div>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<button class="text-slate-500 hover:text-emerald-300 transition-colors duration-200"><span class="material-symbols-outlined">terminal</span></button>
+<button class="text-slate-500 hover:text-emerald-300 transition-colors duration-200 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border-2 border-slate-950"></span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-emerald-500/30">
+<img class="w-full h-full object-cover" data-alt="close-up of futuristic cybernetic profile picture for a developer avatar with soft blue and green neon lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_mBrR2FUW9qqSt6HJxAIl1QUmN5a_L_a1vblIByoVkNNtpMn3hv2qHvfdN6osCuJnXQB_UgIYbL3wNShi3tYWhygCF0pOTYYUZOsVNFh_rUmuE7GKWkA4lXLDNqbTeaZ-jnGUW-6zLnTR1vj1tf44XpU1zRhqtP0HD_y1ZDdguwqS0MNSc8527rgRV91G8k3WmwyqMe-ztWBJabGjMuCMU1cDKE6rKRWkb5E_Dh_oC1w8XkFctlxkkwvkqmg9MNoMUNSybcZo8Hg"/>
+</div>
+</div>
+</header>
+<!-- DASHBOARD CONTENT -->
+<div class="p-8 space-y-8 max-w-[1600px]">
+<!-- STATS ROW -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<!-- Circular Score -->
+<div class="glass p-6 rounded-2xl flex items-center space-x-6 border-l-4 border-emerald-500">
+<div class="relative h-16 w-16 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90">
+<circle cx="32" cy="32" fill="transparent" r="28" stroke="#31353c" stroke-width="4"></circle>
+<circle cx="32" cy="32" fill="transparent" r="28" stroke="#10b981" stroke-dasharray="175" stroke-dashoffset="114" stroke-linecap="round" stroke-width="4"></circle>
+</svg>
+<span class="absolute text-emerald-400 font-bold text-sm">35%</span>
+</div>
+<div>
+<p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Grader Score</p>
+<p class="text-2xl font-bold text-on-surface">0.35</p>
+</div>
+</div>
+<!-- Conflicts -->
+<div class="glass p-6 rounded-2xl flex items-center space-x-5 border-l-4 border-error">
+<div class="h-12 w-12 rounded-xl bg-error/10 flex items-center justify-center text-error">
+<span class="material-symbols-outlined">warning</span>
+</div>
+<div>
+<p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Merge Status</p>
+<p class="text-xl font-bold text-on-surface">2 Conflicts</p>
+</div>
+</div>
+<!-- CI Status -->
+<div class="glass p-6 rounded-2xl flex items-center space-x-5 border-l-4 border-error">
+<div class="h-12 w-12 rounded-xl bg-error/10 flex items-center justify-center text-error">
+<span class="material-symbols-outlined">cancel</span>
+</div>
+<div>
+<p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">CI Status</p>
+<p class="text-xl font-bold text-on-surface">3 Failing</p>
+</div>
+</div>
+<!-- Steps -->
+<div class="glass p-6 rounded-2xl flex flex-col justify-center space-y-3 border-l-4 border-primary">
+<div class="flex justify-between items-center">
+<p class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Steps</p>
+<span class="text-primary font-bold text-xs">4 / 18</span>
+</div>
+<div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[22%]"></div>
+</div>
+</div>
+</div>
+<!-- MIDDLE SECTION -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Conflict Files -->
+<div class="lg:col-span-4 glass rounded-3xl overflow-hidden flex flex-col">
+<div class="p-6 border-b border-white/5 flex justify-between items-center">
+<h3 class="font-bold text-slate-200">Conflict Files</h3>
+<span class="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 font-mono">2 Files</span>
+</div>
+<div class="flex-1 p-2 space-y-2">
+<div class="p-4 rounded-2xl bg-white/5 flex items-center justify-between group hover:bg-white/10 transition-colors">
+<div class="flex items-center space-x-4">
+<span class="material-symbols-outlined text-error">description</span>
+<div class="flex flex-col">
+<span class="text-sm font-medium text-slate-300">app/main.py</span>
+<span class="text-[9px] font-bold text-error uppercase tracking-tighter">Conflicted</span>
+</div>
+</div>
+<button class="text-[10px] font-bold text-primary uppercase border border-primary/20 px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">View</button>
+</div>
+<div class="p-4 rounded-2xl bg-white/5 flex items-center justify-between group hover:bg-white/10 transition-colors">
+<div class="flex items-center space-x-4">
+<span class="material-symbols-outlined text-primary">description</span>
+<div class="flex flex-col">
+<span class="text-sm font-medium text-slate-300">app/utils.py</span>
+<span class="text-[9px] font-bold text-primary uppercase tracking-tighter">Resolved</span>
+</div>
+</div>
+<button class="text-[10px] font-bold text-primary uppercase border border-primary/20 px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">View</button>
+</div>
+</div>
+</div>
+<!-- AI Auto-Repair Panel -->
+<div class="lg:col-span-8 glass rounded-3xl overflow-hidden flex flex-col h-[320px]">
+<div class="p-6 border-b border-white/5 flex justify-between items-center">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+<h3 class="font-bold text-slate-200">AI Auto-Repair</h3>
+</div>
+<button class="flex items-center space-x-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-xs font-bold hover:bg-primary/20 transition-all border border-primary/20">
+<span class="material-symbols-outlined text-sm">auto_fix_high</span>
+<span>Start Auto-Repair</span>
+</button>
+</div>
+<div class="flex-1 grid grid-cols-2">
+<div class="p-8 flex flex-col justify-center space-y-4">
+<p class="text-slate-400 text-sm leading-relaxed">Let AI resolve all conflicts automatically using historical context and LLM-powered code analysis.</p>
+<div class="flex items-center space-x-3">
+<div class="flex -space-x-2">
+<img class="h-6 w-6 rounded-full border border-slate-900" data-alt="portrait of a focused developer in a high-tech lab environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDb4BCVBYCwIVIn1yogaZmyRkUn6FYyhAEcJDqX2lYSt39bB8VGI3zL1moI-EGNJ1jmEC9DGnKdZP4bIbaAmEQMi0vCIRHi6cmY7OleYTfFWxqe0uZ9QOPj1r6M_7mGzKdwCJlMq2W-uxh63XwV--pgPtGvJ0UbwqD3LU0STgwh_0_JzcmhCyRTfOjiw68gyRnHqRjE9lmvbrfUmkxbXGROYydH21IU_bNtMLSo8tksedkDvGr7mmExduD0Qn0RK-UCK6k9bBwIebA"/>
+<img class="h-6 w-6 rounded-full border border-slate-900" data-alt="minimalist studio portrait of a technology professional" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKW_VIlwkqT5LM4nDZYgtZNLkBBu7HldYdDx_rdr2G4TzfJv2TuxLTI8yF4AkNQQrdUA8m8vgN2uiPLgBzbo6ByE6TWVPVNczXcsHiWf8YIQjv9QcMr0DPtTTux249StrEomj62UXzNEsAnpMioepeWQvE_o0MEnEAT0RfYmkfiiaUBfilukB2UOsqleLzJGq1t9Oy4pyu9hrEQwus4RvYNYP3UE9Ljsx13FZ30OBW_aALvUMoC3-ZyUDrTRHqYfC62llrnoPtBH4"/>
+</div>
+<span class="text-[10px] text-slate-500 font-bold uppercase">Trusted by 2.4k developers</span>
+</div>
+</div>
+<div class="bg-slate-950/40 p-6 font-mono text-[11px] space-y-2 overflow-y-auto">
+<div class="flex items-center space-x-2 text-primary">
+<span class="material-symbols-outlined text-xs">check_circle</span>
+<span>Step 1: list_files...</span>
+</div>
+<div class="flex items-center space-x-2 text-primary">
+<span class="material-symbols-outlined text-xs">check_circle</span>
+<span>Step 2: read_file → app/main.py...</span>
+</div>
+<div class="flex items-center space-x-2 text-primary animate-pulse">
+<span class="material-symbols-outlined text-xs">sync</span>
+<span>Step 3: write_file → app/main.py...</span>
+</div>
+<div class="flex items-center space-x-2 text-slate-600">
+<span class="material-symbols-outlined text-xs">circle</span>
+<span>Step 4: verify_changes...</span>
+</div>
+<div class="flex items-center space-x-2 text-slate-600">
+<span class="material-symbols-outlined text-xs">circle</span>
+<span>Step 5: ci_validation...</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- BOTTOM SECTION -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- File Viewer (Code Editor) -->
+<div class="lg:col-span-8 bg-surface-container-lowest rounded-3xl overflow-hidden shadow-inner flex flex-col h-[400px]">
+<div class="px-6 py-4 bg-white/5 flex items-center justify-between">
+<div class="flex items-center space-x-4">
+<span class="text-xs font-mono text-slate-400">app/main.py</span>
+<div class="flex items-center space-x-1">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="text-[10px] text-slate-500 uppercase font-bold">1 Merge Conflict</span>
+</div>
+</div>
+<div class="flex space-x-2">
+<span class="w-3 h-3 rounded-full bg-slate-800"></span>
+<span class="w-3 h-3 rounded-full bg-slate-800"></span>
+<span class="w-3 h-3 rounded-full bg-slate-800"></span>
+</div>
+</div>
+<div class="flex-1 p-6 font-mono text-sm overflow-auto text-slate-300 leading-6">
+<div class="flex"><span class="w-8 text-slate-600 select-none">12</span><span>def validate_user(token):</span></div>
+<div class="flex"><span class="w-8 text-slate-600 select-none">13</span><span class="bg-error/20 w-full">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</span></div>
+<div class="flex"><span class="w-8 text-slate-600 select-none">14</span><span class="bg-error/10 w-full">    if not token.is_valid():</span></div>
+<div class="flex"><span class="w-8 text-slate-600 select-none">15</span><span class="bg-error/10 w-full">        raise AuthError("Invalid Session Token")</span></div>
+<div class="flex"><span class="w-8 text-slate-600 select-none">16</span><span class="bg-tertiary/20 w-full">=======</span></div>
+<div class="flex"><span class="w-8 text-slate-600 select-none">17</span><span class="bg-primary/10 w-full">    # Optimized token validation path</span></div>
+<div class="flex"><span class="w-8 text-slate-600 select-none">18</span><span class="bg-primary/10 w-full">    status = cache.get_token_status(token)</span></div>
+<div class="flex"><span class="w-8 text-slate-600 select-none">19</span><span class="bg-primary/10 w-full">    if status != Status.ACTIVE:</span></div>
+<div class="flex"><span class="w-8 text-slate-600 select-none">20</span><span class="bg-primary/20 w-full">&gt;&gt;&gt;&gt;&gt;&gt;&gt; feature/auth-optimization</span></div>
+<div class="flex"><span class="w-8 text-slate-600 select-none">21</span><span>    return True</span></div>
+</div>
+</div>
+<!-- Grading Breakdown -->
+<div class="lg:col-span-4 glass rounded-3xl p-8 flex flex-col space-y-8">
+<h3 class="font-bold text-slate-200">Grading Breakdown</h3>
+<div class="flex-1 flex flex-col justify-center space-y-6">
+<div class="space-y-2">
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+<span class="text-primary">Merge Resolution</span>
+<span class="text-slate-300">35%</span>
+</div>
+<div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[35%]"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+<span class="text-tertiary">CI Progress</span>
+<span class="text-slate-300">35%</span>
+</div>
+<div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[35%]"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+<span class="text-slate-500">CI Pass Bonus</span>
+<span class="text-slate-300">30%</span>
+</div>
+<div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-slate-600 w-[0%]"></div>
+</div>
+</div>
+<div class="pt-4 border-t border-white/5">
+<div class="flex justify-between items-center">
+<span class="text-error font-bold text-xs">Total Penalties</span>
+<span class="text-error font-mono">-0%</span>
+</div>
+</div>
+</div>
+<button class="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-slate-300 text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
+                        Full Report
+                    </button>
+</div>
+</div>
+</div>
+<!-- COLLAPSIBLE TERMINAL LOG -->
+<footer class="mt-auto border-t border-white/5 bg-slate-950/80 backdrop-blur-xl">
+<div class="px-6 py-2 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-primary text-sm">terminal</span>
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Terminal Log</span>
+</div>
+<span class="material-symbols-outlined text-slate-600">keyboard_arrow_up</span>
+</div>
+<div class="h-32 px-8 py-4 font-mono text-[12px] text-primary/80 overflow-y-auto leading-relaxed">
+<p>&gt; git-ci-gym --analyze-repo .</p>
+<p>&gt; scanning for conflict markers... [FOUND]</p>
+<p>&gt; app/main.py: line 13-20 detected conflict between HEAD and feature/auth-optimization</p>
+<p>&gt; running preliminary test suite...</p>
+<p class="text-error">&gt; error: Test 'auth_validation' failed (ModuleNotFoundError)</p>
+<p>&gt; waiting for AI repair sequence initiation...</p>
+</div>
+</footer>
+</main>
+</body></html>

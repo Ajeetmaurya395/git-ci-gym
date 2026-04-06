@@ -35,6 +35,7 @@ class RepairCommand(str, Enum):
     list_files = "list_files"
     read_file = "read_file"
     write_file = "write_file"
+    edit_file = "edit_file"
     run_command = "run_command"
     get_status = "get_status"
     submit = "submit"
@@ -46,6 +47,8 @@ class RepoRepairAction(Action):
     command: RepairCommand = Field(..., description="Command to execute")
     path: str | None = Field(default=None, description="Workspace-relative path")
     content: str | None = Field(default=None, description="Full file content for writes")
+    search_term: str | None = Field(default=None, description="Exact exact content to search for edit_file")
+    replacement: str | None = Field(default=None, description="Replacement content for edit_file")
     shell_command: str | None = Field(
         default=None, description="Shell command for run_command"
     )
@@ -55,10 +58,12 @@ class RepoRepairAction(Action):
 
     @model_validator(mode="after")
     def validate_required_fields(self) -> "RepoRepairAction":
-        if self.command in {RepairCommand.read_file, RepairCommand.write_file} and not self.path:
+        if self.command in {RepairCommand.read_file, RepairCommand.write_file, RepairCommand.edit_file} and not self.path:
             raise ValueError(f"`path` is required for {self.command.value}")
         if self.command == RepairCommand.write_file and self.content is None:
             raise ValueError("`content` is required for write_file")
+        if self.command == RepairCommand.edit_file and (self.search_term is None or self.replacement is None):
+            raise ValueError("`search_term` and `replacement` are required for edit_file")
         if self.command == RepairCommand.run_command and not self.shell_command:
             raise ValueError("`shell_command` is required for run_command")
         return self

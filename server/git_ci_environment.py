@@ -88,6 +88,7 @@ class GitCIEnvironment(
         self,
         seed: Optional[int] = None,
         episode_id: Optional[str] = None,
+        pr_intel: Optional[Any] = None,
         **kwargs: Any,
     ) -> RepoRepairObservation:
         task = kwargs.get("task", "easy")
@@ -99,6 +100,7 @@ class GitCIEnvironment(
 
         self._current_task = task
         self._current_source_kind = source_kind
+        self._pr_intel = pr_intel
         self._reset_workspace()
 
         self._state = RepoRepairState(
@@ -135,13 +137,15 @@ class GitCIEnvironment(
                     "and CI passes."
                 )
             elif source_kind == SourceKind.repo_url:
+                self._state_notes_merge = ""
                 self._ingest_repo_url(source_ref)
                 self._state.task_id = "custom"
                 self._state.difficulty = "custom"
                 self._state.source_ref = source_ref or ""
                 self._state.repo_label = repo_label or (source_ref or "remote-repo")
                 self._state.objective = objective or (
-                    "Repair the ingested repository until merge conflicts are resolved "
+                    self._state_notes_merge
+                    or "Repair the ingested repository until merge conflicts are resolved "
                     "and CI passes."
                 )
             else:
@@ -196,6 +200,7 @@ class GitCIEnvironment(
         failed_command = False
         refresh_status = action.command in {
             RepairCommand.write_file,
+            RepairCommand.edit_file,
             RepairCommand.run_command,
             RepairCommand.get_status,
             RepairCommand.submit,
@@ -208,6 +213,8 @@ class GitCIEnvironment(
                 last_result = self._read_file(action.path or "")
             elif action.command == RepairCommand.write_file:
                 last_result = self._write_file(action.path or "", action.content or "")
+            elif action.command == RepairCommand.edit_file:
+                last_result = self._edit_file(action.path or "", action.search_term or "", action.replacement or "")
             elif action.command == RepairCommand.run_command:
                 returncode, output = self._run_user_command(action.shell_command or "")
                 last_result = output
@@ -346,33 +353,72 @@ class GitCIEnvironment(
         shutil.rmtree(self._workspace, ignore_errors=True)
         parent_dir = os.path.dirname(os.path.abspath(self._workspace))
         os.makedirs(parent_dir, exist_ok=True)
+
+        is_pr = bool(remote_spec.get("pull_request"))
+        # For PRs, we need more depth to be able to merge with base
+        depth_args = ["--depth", "50"] if is_pr else ["--depth", "1"]
+
         returncode, output = self._run_internal(
-            ["git", "clone", "--depth", "1", remote_spec["clone_url"], self._workspace],
+            ["git", "clone", *depth_args, remote_spec["clone_url"], self._workspace],
             cwd=parent_dir,
             check=False,
+            timeout=120,
         )
         if returncode != 0:
             os.makedirs(self._workspace, exist_ok=True)
             raise ValueError(f"Failed to clone repository: {output}")
-        if remote_spec.get("pull_request"):
+
+        if is_pr:
             pr_number = remote_spec["pull_request"]
             branch_name = f"pr-{pr_number}"
+
+            # Fetch the PR head
             fetch_code, fetch_output = self._run_internal(
                 ["git", "fetch", "origin", f"pull/{pr_number}/head:{branch_name}"],
                 cwd=self._workspace,
                 check=False,
+                timeout=60,
             )
             if fetch_code != 0:
                 raise ValueError(f"Failed to fetch GitHub pull request #{pr_number}: {fetch_output}")
-            checkout_code, checkout_output = self._run_internal(
-                ["git", "checkout", branch_name],
+
+            # Attempt merge: stay on base branch and merge the PR head
+            # This reproduces the actual merge state, creating real conflict markers
+            merge_code, merge_output = self._run_internal(
+                ["git", "merge", "--no-commit", "--no-ff", branch_name],
                 cwd=self._workspace,
                 check=False,
+                timeout=30,
             )
-            if checkout_code != 0:
-                raise ValueError(
-                    f"Fetched GitHub pull request #{pr_number} but could not check it out: "
-                    f"{checkout_output}"
+            # merge_code != 0 means there are real conflicts — that's expected
+            # If merge succeeded (code 0), we still keep the merged state for CI checking
+            # Store merge info for the objective
+            if merge_code != 0 and "CONFLICT" in merge_output:
+                self._state_notes_merge = (
+                    f"PR #{pr_number} has merge conflicts with base branch. "
+                    f"Resolve all conflicts and fix CI."
+                )
+            else:
+                # No merge conflicts — just checkout the PR branch for CI-only repair
+                # Abort the merge and switch to the PR branch directly
+                self._run_internal(
+                    ["git", "merge", "--abort"],
+                    cwd=self._workspace,
+                    check=False,
+                )
+                checkout_code, checkout_output = self._run_internal(
+                    ["git", "checkout", branch_name],
+                    cwd=self._workspace,
+                    check=False,
+                )
+                if checkout_code != 0:
+                    raise ValueError(
+                        f"Fetched GitHub pull request #{pr_number} but could not check it out: "
+                        f"{checkout_output}"
+                    )
+                self._state_notes_merge = (
+                    f"PR #{pr_number} has no merge conflicts but may have CI failures. "
+                    f"Fix all failing tests."
                 )
 
     def _normalize_source_input(
@@ -481,6 +527,24 @@ class GitCIEnvironment(
             file.write(content)
         return f"Wrote {len(content)} characters to {path}"
 
+    def _edit_file(self, path: str, search_term: str, replacement: str) -> str:
+        full_path = self._resolve_path(path)
+        if not os.path.exists(full_path):
+            raise FileNotFoundError(f"File not found: {path}. Cannot edit.")
+        with open(full_path, "r") as file:
+            content = file.read()
+        
+        if search_term not in content:
+            raise ValueError(f"Target search text not found in {path}. Make sure the target text is exactly identical to the file's content.")
+        
+        count = content.count(search_term)
+        new_content = content.replace(search_term, replacement)
+        
+        with open(full_path, "w") as file:
+            file.write(new_content)
+            
+        return f"Successfully replaced {count} occurrence(s) of the target text in {path}."
+
     def _list_files(self) -> list[str]:
         files = []
         for root, dirs, filenames in os.walk(self._workspace):
@@ -491,6 +555,12 @@ class GitCIEnvironment(
         return sorted(files)
 
     def _find_conflict_files(self) -> list[str]:
+        """Find files with actual git merge conflict markers.
+        
+        Requires BOTH <<<<<<< AND ======= to be present in the same file
+        to avoid false positives from markdown/documentation files that
+        use ======= as section separators.
+        """
         conflict_files = []
         for path in self._list_files():
             full_path = os.path.join(self._workspace, path)
@@ -499,11 +569,35 @@ class GitCIEnvironment(
                     content = file.read()
             except (UnicodeDecodeError, PermissionError, OSError):
                 continue
-            if re.search(r"<{7}|={7}|>{7}", content):
+            # Require both the opening conflict marker AND separator
+            has_open = bool(re.search(r'^<{7}\s', content, re.MULTILINE))
+            has_sep = bool(re.search(r'^={7}$', content, re.MULTILINE))
+            has_close = bool(re.search(r'^>{7}\s', content, re.MULTILINE))
+            if has_open and has_sep and has_close:
                 conflict_files.append(path)
         return conflict_files
 
     def _run_pytest(self) -> tuple[bool, int, list[str], str]:
+        if getattr(self, "_pr_intel", None) and self._pr_intel.fetched:
+            pr_intel = self._pr_intel
+            failing_checks = [c for c in pr_intel.check_runs if c.conclusion == "failure"]
+            failing_tests = [c.name for c in failing_checks]
+            failure_count = len(failing_checks)
+            ci_passing = failure_count == 0
+            
+            output_parts = [f"GitHub PR CI Checks ({pr_intel.passing_checks} passing, {failure_count} failing)"]
+            for c in failing_checks:
+                output_parts.append(f"FAILED: {c.name}")
+                if c.failure_summary:
+                    output_parts.append(f"Details:\n{c.failure_summary}")
+            
+            output = "\n\n".join(output_parts)
+            if not ci_passing and not failing_checks and not pr_intel.passing_checks:
+                # If CI runs are completely missing, don't fail, assume passing to not block or rely on heuristic
+                return True, 0, [], self._truncate("No CI checks found in PR, assuming success.", 4000)
+                
+            return ci_passing, failure_count, failing_tests, self._truncate(output, 4000)
+
         result = subprocess.run(
             [sys.executable, "-m", "pytest", "-q", "--tb=no"],
             cwd=self._workspace,

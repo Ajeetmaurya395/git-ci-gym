@@ -4,6 +4,9 @@ FastAPI application for the typed Git-CI-Gym repo repair environment.
 
 from __future__ import annotations
 
+import os
+import subprocess
+from contextlib import asynccontextmanager
 from textwrap import dedent
 from threading import Lock
 from typing import Any
@@ -14,18 +17,24 @@ from pydantic import ValidationError
 
 try:
     from fastapi import HTTPException
-    from fastapi.responses import HTMLResponse
+    from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse, RedirectResponse
+    from fastapi.staticfiles import StaticFiles
     from openenv.core.env_server.http_server import create_app
 
     from ..models import RepoRepairAction, RepoRepairObservation, SourceKind
     from .git_ci_environment import GitCIEnvironment
+    from .ai_repair import run_repair_agent
+    from .github_intel import fetch_pr_intelligence, PRIntelligence
 except ImportError:
     from fastapi import HTTPException
-    from fastapi.responses import HTMLResponse
+    from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse, RedirectResponse
+    from fastapi.staticfiles import StaticFiles
     from openenv.core.env_server.http_server import create_app
 
     from models import RepoRepairAction, RepoRepairObservation, SourceKind
     from server.git_ci_environment import GitCIEnvironment
+    from server.ai_repair import run_repair_agent
+    from server.github_intel import fetch_pr_intelligence, PRIntelligence
 
 
 app = create_app(
@@ -51,6 +60,10 @@ class BrowserStepRequest(BaseModel):
     action: RepoRepairAction
 
 
+class ActionPayloadError(ValueError):
+    """Raised when the browser submits an invalid action payload."""
+
+
 class BrowserSessionStore:
     """Small in-memory session store for the browser control panel."""
 
@@ -67,15 +80,28 @@ class BrowserSessionStore:
                 env = GitCIEnvironment()
                 self._sessions[session_id] = {"env": env, "last_observation": None}
 
+        # Auto-fetch PR intelligence for GitHub PR URLs
+        pr_intel = None
+        if request.source_kind == SourceKind.repo_url and request.source_ref:
+            source_url = request.source_ref.strip()
+            if "github.com" in source_url and "/pull/" in source_url:
+                try:
+                    pr_intel = fetch_pr_intelligence(source_url)
+                except Exception:
+                    pr_intel = None
+
         observation = env.reset(
             task=request.task,
             source_kind=request.source_kind.value,
             source_ref=request.source_ref,
             repo_label=request.repo_label,
             objective=request.objective,
+            pr_intel=pr_intel,
         )
         with self._lock:
             self._sessions[session_id]["last_observation"] = observation
+            self._sessions[session_id]["pr_intel"] = pr_intel
+
         return session_id, observation, env.state.model_dump(mode="json")
 
     def step(self, request: BrowserStepRequest) -> tuple[RepoRepairObservation, dict[str, Any]]:
@@ -96,10 +122,22 @@ class BrowserSessionStore:
             "observation": observation.model_dump(mode="json") if observation else None,
         }
 
+    def set_github_token(self, session_id: str, token: str) -> None:
+        """Store a GitHub token in memory for this session only. Never persisted to disk."""
+        session = self._require_session(session_id)
+        with self._lock:
+            self._sessions[session_id]["github_token"] = token
+
+    def get_github_token(self, session_id: str) -> str | None:
+        """Get the GitHub token for a session."""
+        session = self._require_session(session_id)
+        return session.get("github_token")
+
     def close(self, session_id: str) -> None:
         with self._lock:
             session = self._sessions.pop(session_id, None)
         if session is not None:
+            # Token is automatically purged when session is removed from memory
             session["env"].close()
 
     def close_all(self) -> None:
@@ -118,11 +156,19 @@ class BrowserSessionStore:
 
 
 browser_sessions = BrowserSessionStore()
+_base_lifespan_context = app.router.lifespan_context
 
 
-@app.on_event("shutdown")
-def _close_browser_sessions() -> None:
-    browser_sessions.close_all()
+@asynccontextmanager
+async def _app_lifespan(app_instance):
+    async with _base_lifespan_context(app_instance):
+        try:
+            yield
+        finally:
+            browser_sessions.close_all()
+
+
+app.router.lifespan_context = _app_lifespan
 
 
 @app.post("/ui/reset")
@@ -144,6 +190,8 @@ def ui_step(request: dict[str, Any]) -> dict[str, Any]:
         )
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=exc.errors()) from exc
+    except ActionPayloadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     observation, state = browser_sessions.step(step_request)
     return {
         "session_id": step_request.session_id,
@@ -163,6 +211,251 @@ def ui_close_session(session_id: str) -> dict[str, bool]:
     return {"closed": True}
 
 
+class AutoRepairRequest(BaseModel):
+    session_id: str
+
+
+@app.post("/ui/auto-repair")
+def ui_auto_repair(request: AutoRepairRequest):
+    """Run the AI repair agent and stream each step as SSE."""
+    session = browser_sessions._require_session(request.session_id)
+    env = session["env"]
+    last_obs = session.get("last_observation")
+    if last_obs is None:
+        raise HTTPException(status_code=400, detail="Reset an episode first.")
+
+    task_name = env.state.task_id or "custom"
+    pr_intel = session.get("pr_intel")  # May be None for non-PR sessions
+
+    def event_stream():
+        for step in run_repair_agent(env, last_obs, task_name=task_name, max_steps=12, pr_intel=pr_intel):
+            yield step.to_sse()
+            # Keep session observation in sync
+            with browser_sessions._lock:
+                if request.session_id in browser_sessions._sessions:
+                    browser_sessions._sessions[request.session_id]["last_observation"] = (
+                        env._build_observation(
+                            reward=0.0,
+                            done=step.done,
+                            last_command=step.command,
+                            last_result=step.result_preview,
+                        )
+                    )
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.get("/ui/pr-intel")
+def ui_pr_intel(session_id: str) -> dict[str, Any]:
+    """Return cached PR intelligence for a session."""
+    session = browser_sessions._require_session(session_id)
+    pr_intel = session.get("pr_intel")
+    if pr_intel is None:
+        return {"fetched": False, "error": "No PR intelligence available for this session."}
+    return pr_intel.to_dict()
+
+
+class SetTokenRequest(BaseModel):
+    session_id: str
+    token: str
+
+
+@app.post("/ui/set-token")
+def ui_set_token(request: SetTokenRequest) -> dict[str, Any]:
+    """Store a GitHub token in session memory (never persisted to disk).
+    Validates the token with a quick GitHub API call."""
+    import requests as req
+    # Validate token
+    try:
+        resp = req.get(
+            "https://api.github.com/user",
+            headers={"Authorization": f"Bearer {request.token}", "Accept": "application/vnd.github+json"},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return {"valid": False, "error": "Invalid token or insufficient permissions."}
+        user_data = resp.json()
+        username = user_data.get("login", "unknown")
+    except Exception as e:
+        return {"valid": False, "error": f"Token validation failed: {str(e)}"}
+
+    browser_sessions.set_github_token(request.session_id, request.token)
+    return {"valid": True, "username": username, "message": f"Authenticated as {username}"}
+
+@app.get("/auth/github/login")
+def auth_github_login(session_id: str) -> RedirectResponse:
+    client_id = os.environ.get("GITHUB_CLIENT_ID")
+    if not client_id:
+        raise HTTPException(status_code=500, detail="GITHUB_CLIENT_ID is not configured.")
+    # State parameter is securely mapped to our session_id
+    url = f"https://github.com/login/oauth/authorize?client_id={client_id}&scope=repo&state={session_id}"
+    return RedirectResponse(url)
+
+
+@app.get("/auth/github/callback")
+def auth_github_callback(code: str, state: str) -> HTMLResponse:
+    """Callback for GitHub OAuth. Exchanges code for token."""
+    import requests as req
+    session_id = state
+    client_id = os.environ.get("GITHUB_CLIENT_ID")
+    client_secret = os.environ.get("GITHUB_CLIENT_SECRET")
+    
+    if not client_id or not client_secret:
+        return HTMLResponse("OAuth is not configured on the server.", status_code=500)
+    
+    # Exchange code for token
+    token_url = "https://github.com/login/oauth/access_token"
+    headers = {"Accept": "application/json"}
+    data = {"client_id": client_id, "client_secret": client_secret, "code": code}
+    resp = req.post(token_url, json=data, headers=headers)
+    token_data = resp.json()
+    
+    access_token = token_data.get("access_token")
+    if not access_token:
+        error = token_data.get("error_description", "Unknown OAuth error")
+        return HTMLResponse(f"OAuth error: {error}", status_code=400)
+        
+    try:
+        browser_sessions.set_github_token(session_id, access_token)
+        # Verify and fetch username
+        user_resp = req.get("https://api.github.com/user", headers={"Authorization": f"Bearer {access_token}"})
+        username = user_resp.json().get("login", "")
+    except Exception:
+        pass
+
+    # Render a success page that automatically closes itself
+    html = """
+    <html><body>
+    <h2>Authentication Successful</h2>
+    <p>You can close this window and return to Git-CI-Gym.</p>
+    <script>
+        // Update local storage to trigger parent window listeners if needed
+        localStorage.setItem("github_oauth_success", Date.now().toString());
+        setTimeout(() => { window.close(); }, 1500);
+    </script>
+    </body></html>
+    """
+    return HTMLResponse(html)
+
+
+@app.get("/ui/auth-status")
+def ui_auth_status(session_id: str) -> dict[str, Any]:
+    """Check if the session has a valid token and return username if available."""
+    token = browser_sessions.get_github_token(session_id)
+    if not token:
+        return {"authenticated": False}
+    try:
+        import requests as req
+        user_resp = req.get("https://api.github.com/user", headers={"Authorization": f"Bearer {token}"}, timeout=5)
+        if user_resp.status_code == 200:
+            return {"authenticated": True, "username": user_resp.json().get("login")}
+    except Exception:
+        pass
+    return {"authenticated": False}
+
+
+class PushFixRequest(BaseModel):
+    session_id: str
+    branch_name: str = ""
+    commit_message: str = "fix: AI-assisted repair via Git-CI-Gym"
+
+
+@app.post("/ui/push-fix")
+def ui_push_fix(request: PushFixRequest) -> dict[str, Any]:
+    """Push the repaired code to a new branch on GitHub.
+    
+    Requirements:
+    - Session must have a valid GitHub token
+    - Grader score must be >= 1.0
+    - Source must be a repo_url
+    """
+    session = browser_sessions._require_session(request.session_id)
+    token = session.get("github_token")
+    if not token:
+        raise HTTPException(status_code=403, detail="GitHub token required. Set token in GitHub Settings first.")
+
+    env = session["env"]
+    state = env.state
+
+    # Check grader score
+    if state.grader_score < 0.95:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Score too low ({state.grader_score:.2f}). Repair must achieve ≥ 0.95 before pushing.",
+        )
+
+    # Only works for URL-based repos
+    source_ref = state.source_ref
+    if not source_ref or "github.com" not in source_ref:
+        raise HTTPException(status_code=400, detail="Push-fix only works with GitHub PR URLs.")
+
+    workspace = env._workspace
+    branch_name = request.branch_name or f"gitcigym-fix-{state.episode_id[:8]}"
+
+    try:
+        # Configure git with token for push
+        subprocess.run(
+            ["git", "config", "user.email", "gitcigym@automated.fix"],
+            cwd=workspace, capture_output=True, timeout=5,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Git-CI-Gym Bot"],
+            cwd=workspace, capture_output=True, timeout=5,
+        )
+
+        # Create and switch to fix branch
+        subprocess.run(
+            ["git", "checkout", "-b", branch_name],
+            cwd=workspace, capture_output=True, timeout=5,
+        )
+
+        # Stage all changes
+        subprocess.run(
+            ["git", "add", "-A"],
+            cwd=workspace, capture_output=True, timeout=10,
+        )
+
+        # Commit
+        result = subprocess.run(
+            ["git", "commit", "-m", request.commit_message],
+            cwd=workspace, capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode != 0 and "nothing to commit" in (result.stdout + result.stderr):
+            return {"pushed": False, "error": "Nothing to commit — no changes detected."}
+
+        # Push using token-authenticated URL
+        # Extract owner/repo from source_ref
+        from urllib.parse import urlparse
+        parsed = urlparse(source_ref)
+        parts = [p for p in parsed.path.split("/") if p]
+        if len(parts) < 2:
+            raise HTTPException(status_code=400, detail="Cannot parse owner/repo from URL.")
+        owner, repo = parts[0], parts[1]
+        push_url = f"https://x-access-token:{token}@github.com/{owner}/{repo}.git"
+
+        push_result = subprocess.run(
+            ["git", "push", push_url, branch_name],
+            cwd=workspace, capture_output=True, text=True, timeout=30,
+        )
+        if push_result.returncode != 0:
+            error_msg = (push_result.stderr or push_result.stdout or "Unknown push error")
+            # Scrub token from error messages
+            error_msg = error_msg.replace(token, "***")
+            return {"pushed": False, "error": f"Push failed: {error_msg}"}
+
+        return {
+            "pushed": True,
+            "branch": branch_name,
+            "message": f"Fix pushed to branch '{branch_name}' on {owner}/{repo}",
+            "pr_url": f"https://github.com/{owner}/{repo}/compare/{branch_name}?expand=1",
+        }
+    except subprocess.TimeoutExpired:
+        return {"pushed": False, "error": "Push timed out."}
+    except Exception as e:
+        return {"pushed": False, "error": str(e)}
+
+
 def _normalize_browser_action(request: dict[str, Any]) -> RepoRepairAction:
     raw_action = request.get("action")
     if raw_action is None:
@@ -172,17 +465,7 @@ def _normalize_browser_action(request: dict[str, Any]) -> RepoRepairAction:
             if key in {"command", "path", "content", "shell_command", "notes"}
         }
     if not isinstance(raw_action, dict):
-        raise ValidationError.from_exception_data(
-            "RepoRepairAction",
-            [
-                {
-                    "loc": ("action",),
-                    "msg": "action payload must be an object",
-                    "type": "value_error",
-                    "input": raw_action,
-                }
-            ],
-        )
+        raise ActionPayloadError("action payload must be an object")
     cleaned_action = {
         key: (value.strip() if isinstance(value, str) else value) for key, value in raw_action.items()
     }
@@ -192,9 +475,22 @@ def _normalize_browser_action(request: dict[str, Any]) -> RepoRepairAction:
     return RepoRepairAction.model_validate(cleaned_action)
 
 
+_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+
+
 @app.get("/", include_in_schema=False, response_class=HTMLResponse)
 def index() -> HTMLResponse:
-    """Render a project-focused operational homepage."""
+    """Serve the premium dashboard."""
+    index_path = os.path.join(_STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path, media_type="text/html")
+    return HTMLResponse("<h1>Dashboard not found. Place index.html in server/static/</h1>", status_code=404)
+
+
+# Keep the old inline HTML as a fallback at /ui/legacy
+@app.get("/ui/legacy", include_in_schema=False, response_class=HTMLResponse)
+def legacy_index() -> HTMLResponse:
+    """Legacy inline dashboard (fallback)."""
     html = dedent(
         """
         <!doctype html>
@@ -784,6 +1080,10 @@ def index() -> HTMLResponse:
 def main():
     """Entry point for direct execution."""
     import uvicorn
+
+    # Mount static files for assets if needed
+    if os.path.isdir(_STATIC_DIR):
+        app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
     uvicorn.run(app, host="0.0.0.0", port=7860)
 
